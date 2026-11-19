@@ -33,7 +33,7 @@ Sidescreen creates a virtual display on the Mac at the resolution you choose and
 
 ### One mouse and keyboard
 
-Push the pointer off the edge of your screens towards the MacBook and it continues on the Mac. Come back and it lands exactly where you'd expect, even inside the display window. Drag a window from the MacBook onto the extra display, or the other way round, in one move.
+Push the pointer off the edge of your screens towards the MacBook and it continues on the Mac. Come back and it lands exactly where you'd expect, even inside the display window. Drag a window from the MacBook onto the extra display in one move.
 
 ### Your language follows you
 
@@ -94,12 +94,13 @@ Sidescreen is a [Tauri](https://tauri.app) app in Rust on both computers.
 
 You need Rust, Node.js, and on the Mac Xcode's command line tools.
 
-```bash
-cd app && npm install
-npm run tauri build -- --bundles nsis   # Windows installer
+```powershell
+cd app; npm install; cd ..
+./scripts/build-windows.ps1             # Windows installer
 ```
 
 ```bash
+cd app && npm install && cd ..
 bash scripts/make-dmg.sh                # Mac app + DMG (builds the display helper too)
 ```
 

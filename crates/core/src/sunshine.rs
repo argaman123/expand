@@ -294,10 +294,10 @@ mod tests {
     #[test]
     fn pending_pairing_id_is_read_from_the_api_reply() {
         let reply: serde_json::Value = serde_json::from_str(
-            r#"{"pairings":[{"address":"192.168.1.10","id":"9d78efe097bf67ad20e7c110f13d8167","name":"roth"}]}"#,
+            r#"{"pairings":[{"address":"192.168.1.10","id":"0f1e2d3c4b5a69788796a5b4c3d2e1f0","name":"Moonlight"}]}"#,
         )
         .unwrap();
-        assert_eq!(pending_pairing_id(&reply).as_deref(), Some("9d78efe097bf67ad20e7c110f13d8167"));
+        assert_eq!(pending_pairing_id(&reply).as_deref(), Some("0f1e2d3c4b5a69788796a5b4c3d2e1f0"));
     }
 
     #[test]

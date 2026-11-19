@@ -59,7 +59,8 @@
       "files": {
         "MacOS/sidescreen-display": "../../target/sidescreen-display"
       },
-      "minimumSystemVersion": "14.0"
+      "minimumSystemVersion": "14.0",
+      "signingIdentity": "-"
     }
   }
 }
