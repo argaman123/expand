@@ -1,0 +1,65 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Sidescreen",
+  "version": "1.0.0",
+  "identifier": "com.sidescreen.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Sidescreen",
+        "width": 480,
+        "height": 780,
+        "minWidth": 440,
+        "minHeight": 520,
+        "resizable": true,
+        "center": true,
+        "theme": "Dark",
+        "backgroundColor": "#151517"
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis",
+      "dmg",
+      "app"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "Sidescreen",
+    "shortDescription": "An extra display and a shared mouse, keyboard and clipboard between a Windows PC and a Mac",
+    "longDescription": "Sidescreen turns a window on your Windows PC into an extra display for your Mac, and lets one mouse, keyboard and clipboard work across both.",
+    "category": "Utility",
+    "copyright": "GPL-3.0-or-later",
+    "windows": {
+      "nsis": {
+        "installerHooks": "windows/installer-hooks.nsh",
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
+      }
+    },
+    "macOS": {
+      "files": {
+        "MacOS/sidescreen-display": "../../target/sidescreen-display"
+      },
+      "minimumSystemVersion": "14.0"
+    }
+  }
+}

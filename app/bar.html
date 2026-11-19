@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sidescreen bar</title>
+    <link rel="stylesheet" href="/src/bar.css" />
+    <script type="module" src="/src/bar.ts" defer></script>
+  </head>
+  <body>
+    <div id="tab" class="tab" aria-label="Sidescreen"></div>
+    <nav id="bar" class="bar" hidden>
+      <span class="name">Sidescreen</span>
+      <button id="settings">Settings</button>
+      <button id="windowed">Windowed</button>
+      <button id="move">Other monitor</button>
+      <button id="disconnect" class="danger">Disconnect</button>
+    </nav>
+  </body>
+</html>

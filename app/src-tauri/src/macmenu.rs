@@ -1,0 +1,206 @@
+//! The Mac side lives in the menu bar: this decides what its menu says. Pure, so it is tested
+//! on any machine; `lib.rs` turns it into a real menu.
+
+use crate::state::StatusDto;
+use crate::system::SystemDto;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Line {
+    /// Information, not clickable.
+    Text(String),
+    /// A command. `enabled: false` shows it greyed out.
+    Action { id: &'static str, label: String, enabled: bool },
+    /// An on/off setting.
+    Check { id: &'static str, label: String, checked: bool },
+    Separator,
+}
+
+pub fn host_menu(status: &StatusDto, system: &SystemDto) -> Vec<Line> {
+    let now = match status.state {
+        "connected" => "Showing the display".to_string(),
+        "connecting" => "Starting…".to_string(),
+        "failed" => short(&format!(
+            "{}: {}",
+            status.part.as_deref().unwrap_or("Problem"),
+            status.reason.as_deref().unwrap_or("unknown")
+        )),
+        _ => "Ready".to_string(),
+    };
+    let mut lines = vec![Line::Text(now)];
+    if status.paired {
+        lines.push(Line::Text(short(&format!("PC: {}", status.peer_name.as_deref().unwrap_or("paired")))));
+        let idle = matches!(status.state, "disconnected" | "failed");
+        lines.push(Line::Action { id: "forget", label: "Forget this PC".into(), enabled: idle });
+    } else {
+        lines.push(Line::Text("No PC paired yet".into()));
+    }
+
+    lines.push(Line::Separator);
+    let sharing = if status.sharing_paused {
+        "Sharing paused"
+    } else if status.mouse_sharing && status.mouse_state == "failed" {
+        "Sharing isn't working"
+    } else {
+        "Sharing mouse, keyboard and clipboard"
+    };
+    lines.push(Line::Text(sharing.into()));
+    lines.push(Line::Check { id: "pause", label: "Pause sharing".into(), checked: status.sharing_paused });
+    lines.push(Line::Check { id: "login", label: "Start at login".into(), checked: system.start_at_login });
+
+    // Granted permissions need no attention: only a missing one shows as something to do.
+    let missing_permission = [
+        ("perm-screen", "Screen Recording", system.screen_recording),
+        ("perm-access", "Accessibility", system.accessibility),
+    ];
+    if missing_permission.iter().any(|(_, _, granted)| *granted == Some(false)) || system.missing.is_some() {
+        lines.push(Line::Separator);
+    }
+    for (id, name, granted) in missing_permission {
+        match granted {
+            Some(false) => lines.push(Line::Action { id, label: format!("Allow {name}…"), enabled: true }),
+            Some(true) if name == "Screen Recording" && system.accessibility == Some(false) => {
+                lines.push(Line::Text(format!("{name} ✓")))
+            }
+            _ => {}
+        }
+    }
+    if let Some(app) = system.missing {
+        lines.push(Line::Action { id: "install", label: format!("Install {app}…"), enabled: true });
+    }
+
+    lines.push(Line::Separator);
+    lines.push(Line::Action { id: "quit", label: "Quit Sidescreen".into(), enabled: true });
+    lines
+}
+
+/// Menu lines stay short; anything longer is cut with an ellipsis.
+fn short(text: &str) -> String {
+    const MAX: usize = 40;
+    if text.chars().count() <= MAX {
+        text.to_string()
+    } else {
+        format!("{}…", text.chars().take(MAX - 1).collect::<String>())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::SettingsDto;
+
+    fn status() -> StatusDto {
+        StatusDto {
+            role: "host",
+            state: "disconnected",
+            part: None,
+            reason: None,
+            peer_name: Some("DESKTOP-PC".into()),
+            peer_host: Some("192.168.1.10".into()),
+            paired: true,
+            settings: SettingsDto { width: 2560, height: 1440, fps: 60, bitrate_mbps: 30, window_mode: "windowed".into() },
+            config_error: None,
+            mouse_sharing: true,
+            mac_side: "right",
+            mouse_state: "running",
+            mouse_reason: None,
+            sharing_paused: false,
+            close_to_tray: true,
+            clipboard_sharing: true,
+            language_follow: true,
+            peer_addresses: Vec::new(),
+        }
+    }
+
+    fn system() -> SystemDto {
+        SystemDto { missing: None, start_at_login: true, screen_recording: Some(true), accessibility: Some(false) }
+    }
+
+    fn texts(lines: &[Line]) -> Vec<String> {
+        lines
+            .iter()
+            .filter_map(|l| match l {
+                Line::Text(t) => Some(t.clone()),
+                Line::Action { label, .. } | Line::Check { label, .. } => Some(label.clone()),
+                Line::Separator => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn the_menu_starts_with_what_is_happening_and_with_whom() {
+        let lines = host_menu(&status(), &system());
+        assert_eq!(lines[0], Line::Text("Ready".into()));
+        assert_eq!(lines[1], Line::Text("PC: DESKTOP-PC".into()));
+    }
+
+    // 2026-11-19: "way too long"; one short switch that stops all sharing.
+    #[test]
+    fn sharing_has_one_short_pause_switch() {
+        let lines = host_menu(&status(), &system());
+        assert!(lines.contains(&Line::Text("Sharing mouse, keyboard and clipboard".into())));
+        assert!(lines.contains(&Line::Check { id: "pause", label: "Pause sharing".into(), checked: false }));
+        let mut paused = status();
+        paused.sharing_paused = true;
+        let lines = host_menu(&paused, &system());
+        assert!(lines.contains(&Line::Text("Sharing paused".into())));
+        assert!(lines.contains(&Line::Check { id: "pause", label: "Pause sharing".into(), checked: true }));
+    }
+
+    #[test]
+    fn every_label_is_short() {
+        let mut failed = status();
+        failed.state = "failed";
+        failed.part = Some("Sunshine".into());
+        failed.reason = Some("already running".into());
+        for line in texts(&host_menu(&status(), &system())).into_iter().chain(texts(&host_menu(&failed, &system()))) {
+            assert!(line.chars().count() <= 40, "too long for a menu: {line:?}");
+        }
+    }
+
+    #[test]
+    fn a_missing_permission_is_a_link_to_grant_it_and_a_granted_one_is_ticked() {
+        let lines = texts(&host_menu(&status(), &system()));
+        assert!(lines.contains(&"Screen Recording ✓".to_string()), "{lines:?}");
+        assert!(!lines.iter().any(|l| l.contains("Accessibility ✓")), "{lines:?}");
+        assert!(lines.contains(&"Allow Accessibility…".to_string()), "{lines:?}");
+    }
+
+    #[test]
+    fn start_at_login_forget_and_quit_are_there() {
+        let lines = host_menu(&status(), &system());
+        assert!(lines.contains(&Line::Check { id: "login", label: "Start at login".into(), checked: true }));
+        assert!(lines.contains(&Line::Action { id: "forget", label: "Forget this PC".into(), enabled: true }));
+        assert_eq!(lines.last(), Some(&Line::Action { id: "quit", label: "Quit Sidescreen".into(), enabled: true }));
+    }
+
+    #[test]
+    fn forgetting_is_not_offered_mid_session_nor_without_a_pc() {
+        let mut connected = status();
+        connected.state = "connected";
+        let lines = host_menu(&connected, &system());
+        assert!(lines.contains(&Line::Action { id: "forget", label: "Forget this PC".into(), enabled: false }));
+        assert_eq!(lines[0], Line::Text("Showing the display".into()));
+
+        let mut alone = status();
+        alone.paired = false;
+        alone.peer_name = None;
+        alone.peer_host = None;
+        let lines = host_menu(&alone, &system());
+        assert_eq!(lines[1], Line::Text("No PC paired yet".into()));
+        assert!(!texts(&lines).contains(&"Forget this PC".to_string()));
+    }
+
+    #[test]
+    fn problems_are_spelled_out() {
+        let mut failed = status();
+        failed.state = "failed";
+        failed.part = Some("Sunshine".into());
+        failed.reason = Some("already running".into());
+        failed.mouse_state = "failed";
+        failed.mouse_reason = Some("Accessibility permission is missing".into());
+        let lines = texts(&host_menu(&failed, &SystemDto { missing: Some("Sunshine"), ..system() }));
+        assert!(lines.contains(&"Sunshine: already running".to_string()), "{lines:?}");
+        assert!(lines.contains(&"Sharing isn't working".to_string()), "{lines:?}");
+        assert!(lines.contains(&"Install Sunshine…".to_string()), "{lines:?}");
+    }
+}

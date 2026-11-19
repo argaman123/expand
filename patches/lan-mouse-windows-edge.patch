@@ -1,0 +1,72 @@
+diff --git a/input-capture/src/windows/display_util.rs b/input-capture/src/windows/display_util.rs
+index b852f77..0fc16d3 100644
+--- a/input-capture/src/windows/display_util.rs
++++ b/input-capture/src/windows/display_util.rs
+@@ -97,3 +97,51 @@ pub(crate) fn clamp_to_display_bounds(
+     let (min_y, max_y) = (display.top, display.bottom - 1);
+     (x.clamp(min_x, max_x), y.clamp(min_y, max_y))
+ }
++
++/// Sidescreen: the position to compare the next pointer move against. Only positions on a
++/// screen are remembered: after a capture is released with the pointer pushed against the
++/// edge, the reported positions lie beyond it, and remembering those meant pushing on never
++/// crossed again until the pointer was moved back first.
++pub(crate) fn remembered_position(
++    prev: Option<(i32, i32)>,
++    curr: (i32, i32),
++    displays: &[RECT],
++) -> Option<(i32, i32)> {
++    if in_display_region(curr, displays) {
++        Some(curr)
++    } else {
++        prev
++    }
++}
++
++#[cfg(test)]
++mod sidescreen_tests {
++    use super::*;
++
++    // The PC's right-hand monitor, 2026-11-18 (physical pixels).
++    fn displays() -> Vec<RECT> {
++        vec![RECT { left: 0, top: 0, right: 2560, bottom: 1440 }]
++    }
++
++    #[test]
++    fn a_position_on_a_screen_is_remembered() {
++        assert_eq!(remembered_position(Some((2559, 700)), (2500, 700), &displays()), Some((2500, 700)));
++    }
++
++    #[test]
++    fn a_position_beyond_the_edge_is_not_remembered() {
++        assert_eq!(remembered_position(Some((2559, 700)), (2579, 700), &displays()), Some((2559, 700)));
++    }
++
++    // The bug: pushing on against the edge after a released capture never crossed again.
++    #[test]
++    fn pushing_on_against_the_edge_keeps_crossing() {
++        let d = displays();
++        let mut prev = Some((2559, 700));
++        for _ in 0..3 {
++            let curr = (2579, 700);
++            assert_eq!(entered_barrier(prev.unwrap(), curr, &d), Some(Position::Right));
++            prev = remembered_position(prev, curr, &d);
++        }
++    }
++}
+diff --git a/input-capture/src/windows/event_thread.rs b/input-capture/src/windows/event_thread.rs
+index 2018e32..45b20db 100644
+--- a/input-capture/src/windows/event_thread.rs
++++ b/input-capture/src/windows/event_thread.rs
+@@ -264,7 +264,10 @@ fn check_client_activation(wparam: WPARAM, lparam: LPARAM) -> bool {
+     let mouse_low_level: MSLLHOOKSTRUCT = unsafe { *(lparam.0 as *const MSLLHOOKSTRUCT) };
+     let curr_pos = (mouse_low_level.pt.x, mouse_low_level.pt.y);
+     let prev_pos = PREV_POS.get().unwrap_or(curr_pos);
+-    PREV_POS.replace(Some(curr_pos));
++    let remembered = DISPLAYS.with_borrow(|(displays, _)| {
++        display_util::remembered_position(PREV_POS.get(), curr_pos, displays)
++    });
++    PREV_POS.replace(remembered.or(Some(curr_pos)));
+ 
+     /* next event is the first actual event */
+     let ret = ACTIVE_CLIENT.get().is_some();
