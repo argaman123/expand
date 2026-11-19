@@ -59,11 +59,11 @@ Pairing happens once, with a click on the Mac. Everything between the two comput
 
 ### On the PC
 
-Download **Sidescreen_x64-setup.exe** from the [latest release](../../releases/latest) and run it. It also installs [Moonlight](https://moonlight-stream.org), which Sidescreen uses to show the Mac's display.
+Download **Sidescreen_1.0.0_x64-setup.exe** from the [latest release](../../releases/latest) and run it. It also installs [Moonlight](https://moonlight-stream.org), which Sidescreen uses to show the Mac's display.
 
 ### On the Mac
 
-1. Download **Sidescreen_aarch64.dmg** from the [latest release](../../releases/latest), open it and drag Sidescreen into Applications.
+1. Download **Sidescreen_1.0.0_aarch64.dmg** from the [latest release](../../releases/latest), open it and drag Sidescreen into Applications.
 2. Open Sidescreen. The first time, macOS may say it can't check the developer: open **System Settings → Privacy & Security** and click **Open Anyway**.
 3. A short setup guide appears. Click each step: **Screen Recording**, **Accessibility**, and **Install** for the streaming engine ([Sunshine](https://app.lizardbyte.dev/Sunshine)). Each one opens the right place or does it for you, and ticks itself off when done.
 
