@@ -5,12 +5,15 @@ import { listen } from "@tauri-apps/api/event";
 
 const tab = document.querySelector<HTMLDivElement>("#tab")!;
 const bar = document.querySelector<HTMLElement>("#bar")!;
+const move = document.querySelector<HTMLButtonElement>("#move")!;
 
 let closing: number | undefined;
 
 async function open() {
   window.clearTimeout(closing);
   if (!bar.hidden) return;
+  // "Other monitor" only when there is another monitor to go to.
+  move.hidden = !(await invoke<boolean>("bar_can_move").catch(() => true));
   await invoke("bar_expand", { expanded: true });
   tab.hidden = true;
   bar.hidden = false;

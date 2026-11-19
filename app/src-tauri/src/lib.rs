@@ -598,6 +598,7 @@ pub fn run() {
             bar::bar_settings,
             bar::bar_windowed,
             bar::bar_move,
+            bar::bar_can_move,
             system::get_system,
             system::set_start_at_login,
             system::install_missing

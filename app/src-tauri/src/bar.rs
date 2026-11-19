@@ -140,18 +140,31 @@ pub fn bar_windowed() {
     }
 }
 
+/// The full-screen viewer and the monitor it would move to, if there is another one.
+#[cfg(windows)]
+fn move_target() -> Option<(isize, sidescreen_core::share::geometry::Area)> {
+    use sidescreen_core::layout::{filled_monitor, next_monitor};
+    use sidescreen_core::winwindow;
+    let v = viewer()?;
+    let monitors = winwindow::monitors();
+    let here = winwindow::window_rect(v).and_then(|r| filled_monitor(r, &monitors))?;
+    next_monitor(&monitors, here).map(|next| (v, next))
+}
+
+/// Whether "Other monitor" makes sense: only with more than one monitor.
+#[tauri::command]
+pub fn bar_can_move() -> bool {
+    #[cfg(windows)]
+    return move_target().is_some();
+    #[cfg(not(windows))]
+    false
+}
+
 /// Moves the full-screen viewer to the next monitor.
 #[tauri::command]
 pub fn bar_move() {
     #[cfg(windows)]
-    {
-        use sidescreen_core::layout::{filled_monitor, next_monitor};
-        use sidescreen_core::winwindow;
-        let Some(v) = viewer() else { return };
-        let monitors = winwindow::monitors();
-        let Some(here) = winwindow::window_rect(v).and_then(|r| filled_monitor(r, &monitors)) else { return };
-        if let Some(next) = next_monitor(&monitors, here) {
-            winwindow::move_window(v, next);
-        }
+    if let Some((v, next)) = move_target() {
+        sidescreen_core::winwindow::move_window(v, next);
     }
 }
