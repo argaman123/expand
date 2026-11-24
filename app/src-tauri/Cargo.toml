@@ -1,6 +1,6 @@
 [package]
 name = "sidescreen-app"
-version = "1.1.0"
+version = "1.1.1"
 description = "Use a PC monitor as an extra display for a Mac"
 edition = "2021"
 

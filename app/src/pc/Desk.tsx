@@ -41,10 +41,9 @@ export function Desk({ status }: { status: Status }) {
   const frozen = useRef<DeskLayout | null>(null); // the layout as the drag began: the places hold still
   const [pending, setPending] = useState<string | null>(null); // the place just dropped on, until the status confirms it
   const [error, setError] = useState<Failure | null>(null);
-  const auraEl = useRef<HTMLDivElement>(null);
   const heatEl = useRef<HTMLDivElement>(null);
   // How near the window is to the edge the cursor crosses to the Mac (useHeat sets --ss-heat).
-  useHeat([auraEl, heatEl], monitors, status.placement, status.connection === "connected");
+  useHeat([heatEl], monitors, status.placement, status.connection === "connected");
 
   // While the window is being resized everything follows at once; after that, moves glide.
   useLayoutEffect(() => {
@@ -91,15 +90,10 @@ export function Desk({ status }: { status: Status }) {
         h: Math.max(...layout.monitors.map((m) => m.y + m.h)) - Math.min(...layout.monitors.map((m) => m.y)),
       }
     : { x: 0, y: 0, w: 1, h: 1 };
-  // The Mac's light: it comes into the window through the edge the cursor crosses, from the
-  // MacBook's side, while the Mac is connected (dimmer while connecting). It follows the MacBook
-  // where it is going, and the zoom; while the MacBook is in the air it waits, dimmed, at its place.
-  const seam = here ? edgeFor(here, layout) : null;
+  // The Mac's light: only in through the window's side toward the Mac (round 4, the owner: no
+  // spot of light at the edge on the desk too), while connected (dimmer while connecting).
   const light = status.connection === "connected" ? "on" : status.connection === "connecting" ? "dim" : "off";
   const heatSide = status.placement.side === "left" ? "left" : status.placement.side === "bottom" ? "bottom" : "right";
-  const lightAt = seam
-    ? at(view.x + view.s * (seam.x + seam.w / 2), view.y + view.s * (seam.y + seam.h / 2))
-    : undefined;
 
   useEffect(() => () => void (dragging.current = false), []); // no frames after unmount
 
@@ -180,9 +174,6 @@ export function Desk({ status }: { status: Status }) {
     {/* Outside the stage, whose clip would cut it to a box: the light reaches across the window.
         The light in through the window's own side covers the window. */}
     <div ref={heatEl} className={`ss-heat ${light} ${heatSide}`} aria-hidden><div className="ss-heat-light" /></div>
-    <div ref={auraEl} className={`ss-aura ${light} ${here?.side === "bottom" ? "under" : here?.side ?? ""}${size.resizing ? " still" : ""}${drag ? " lifted" : ""}${seam ? "" : " gone"}`} style={lightAt} aria-hidden>
-      <div className="ss-aura-light" />
-    </div>
     <div className={`ss-stage${size.resizing ? " ss-still" : ""}`} ref={ref}>
       <div className="ss-world" ref={world} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.s})` }}>
       {layout.monitors.length > 0 && (
@@ -204,13 +195,14 @@ export function Desk({ status }: { status: Status }) {
                 <div className="w1" />
                 <div className="w2" />
               </div>
+              {/* Inside the screen, so the layer is cut to it exactly. */}
+              {canShow && shown !== m.number && (
+                <button type="button" className="ss-showhere" aria-label={`Show here, monitor ${m.number}`} onClick={() => showOn(m.number)}>
+                  <Desktop16Regular />Show here
+                </button>
+              )}
             </div>
             <span className={`ss-num${shown === m.number ? " sel" : ""}`}>{m.number}</span>
-            {canShow && shown !== m.number && (
-              <button type="button" className="ss-showhere" aria-label={`Show here, monitor ${m.number}`} onClick={() => showOn(m.number)}>
-                <Desktop16Regular />Show here
-              </button>
-            )}
           </div>
         </div>
       ))}

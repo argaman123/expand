@@ -51,6 +51,9 @@ const DWELL_MS: u64 = 300;
 const TOP_EDGE: f64 = 2.0;
 /// Where it keeps the bar once it appeared (wider and deeper, so it doesn't flicker at the edge).
 const KEEP: (f64, f64) = (536.0, 96.0);
+/// How long the bar stays after the pointer left [`KEEP`] (ms): the owner found it went too fast
+/// (round 4). Coming back meanwhile keeps it.
+const LINGER_MS: u64 = 1200;
 /// The window while it holds the title bar's settings popover: the popover (340 wide, with a list
 /// open under one of its settings), and its shadow's room on the right.
 const POPUP: (f64, f64) = (364.0, 480.0);
@@ -149,12 +152,17 @@ fn is_near(at: (f64, f64), window: Area, scale: f64, was: bool, showing: Option<
 
 /// Whether the bar comes, with the pointer at `at` at time `now` (ms): at once on what shows
 /// (`showing`, the peek) or pushed against the top edge; else after it stayed [`DWELL_MS`] in the
-/// zone (`since`: when it came in, while not yet near). Once near (`was`), [`KEEP`] holds it. Says
-/// whether it is near, and when the pointer came into the zone (for the next look).
+/// zone (`since`: when it came in, while not yet near). Once near (`was`), [`KEEP`] holds it, and
+/// it goes [`LINGER_MS`] after the pointer left that (`since`: when it left, while near). Says
+/// whether it is near, and that moment (for the next look).
 #[cfg_attr(not(windows), allow(dead_code))]
 fn reveal(at: (f64, f64), window: Area, scale: f64, was: bool, showing: Option<Area>, since: Option<u64>, now: u64) -> (bool, Option<u64>) {
     if was {
-        return (is_near(at, window, scale, true, showing), None);
+        if is_near(at, window, scale, true, showing) {
+            return (true, None);
+        }
+        let left = since.unwrap_or(now);
+        return if now.saturating_sub(left) >= LINGER_MS { (false, None) } else { (true, Some(left)) };
     }
     if showing.is_some_and(|r| r.contains(at)) {
         return (true, None);
@@ -691,9 +699,20 @@ mod tests {
     }
 
     #[test]
-    fn once_near_it_stays_without_a_dwell_and_goes_on_leaving_the_keep_zone() {
+    fn once_near_it_stays_without_a_dwell_and_goes_a_moment_after_leaving_the_keep_zone() {
         assert_eq!(reveal((1280.0 + 260.0, 80.0), BAR_WINDOW, 1.0, true, None, None, 1000), (true, None));
-        assert_eq!(reveal((1280.0, 300.0), BAR_WINDOW, 1.0, true, None, None, 1000), (false, None));
+        // Out of the keep zone: it stays a moment (the owner: it went too fast), then goes.
+        let (near, since) = reveal((1280.0, 300.0), BAR_WINDOW, 1.0, true, None, None, 1000);
+        assert!(near, "gone the moment the pointer left");
+        assert_eq!(since, Some(1000));
+        assert!(reveal((1280.0, 300.0), BAR_WINDOW, 1.0, true, None, since, 1000 + LINGER_MS - 40).0);
+        assert_eq!(reveal((1280.0, 300.0), BAR_WINDOW, 1.0, true, None, since, 1000 + LINGER_MS), (false, None));
+    }
+
+    #[test]
+    fn coming_back_while_it_lingers_keeps_it_for_good() {
+        let (_, since) = reveal((1280.0, 300.0), BAR_WINDOW, 1.0, true, None, None, 1000);
+        assert_eq!(reveal((1280.0, 40.0), BAR_WINDOW, 1.0, true, None, since, 1300), (true, None));
     }
 
     #[test]

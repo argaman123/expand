@@ -1,3 +1,4 @@
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { FullScreenMaximize16Regular, Settings16Regular } from "@fluentui/react-icons";
@@ -40,6 +41,9 @@ export function DisplayTitleBar({ status }: { status: Status | null }) {
     const r = e.currentTarget.getBoundingClientRect();
     void barSettings({ left: r.left, top: r.top, right: r.right, bottom: r.bottom }).catch(() => {});
   };
+  const growFromTop = (e: React.MouseEvent) => {
+    if (e.button === 0 && mode?.full_screen !== true) void getCurrentWindow().startResizeDragging("North").catch(() => {});
+  };
   return (
     <div className="ss-dtb" data-tauri-drag-region onContextMenu={menu}>
       <div className="ss-dtb-title" data-tauri-drag-region>
@@ -52,6 +56,8 @@ export function DisplayTitleBar({ status }: { status: Status | null }) {
         )}
       </div>
       <div className="ss-dtb-fill" data-tauri-drag-region />
+      {/* The window's top edge resizes it (Tauri's own strip there is hidden: it drew a grey line, display.rs). */}
+      <div className="ss-dtb-grip" aria-hidden onMouseDown={growFromTop} />
       <div className="ss-dtb-caps">
         <button type="button" className="ss-dtb-cap" aria-label="Display settings" onClick={settings}>
           <Settings16Regular className="ss-dtb-glyph" />

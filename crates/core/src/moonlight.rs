@@ -29,7 +29,18 @@ pub fn find_exe() -> Option<PathBuf> {
 
 /// Moonlight always streams in a window of its own: Sidescreen's display window holds it, and
 /// `window_mode` says whether that window fills a monitor.
-pub fn stream_args(host: &str, s: &StreamSettings) -> Vec<String> {
+/// Whether the Mac scrolls the other way round in the display (the PC's Reverse scrolling
+/// setting, on by default; the app keeps it up to date with [`set_reverse_scroll`]).
+static REVERSE_SCROLL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+
+/// The Reverse scrolling setting, for the next stream started ([`Viewer::spawn`]).
+pub fn set_reverse_scroll(on: bool) {
+    REVERSE_SCROLL.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// What the stream starts with. `reverse_scroll` is said either way, so Moonlight's own saved
+/// choice never decides.
+pub fn stream_args(host: &str, s: &StreamSettings, reverse_scroll: bool) -> Vec<String> {
     [
         "stream", host, APP_NAME,
         "--resolution", &format!("{}x{}", s.width, s.height),
@@ -38,6 +49,7 @@ pub fn stream_args(host: &str, s: &StreamSettings) -> Vec<String> {
         "--display-mode", "windowed",
         "--absolute-mouse",
         "--capture-system-keys", "never",
+        if reverse_scroll { "--reverse-scroll-direction" } else { "--no-reverse-scroll-direction" },
     ]
     .iter()
     .map(|a| a.to_string())
@@ -197,13 +209,13 @@ impl Viewer {
         #[cfg(windows)]
         let viewer = {
             let how = hidden::Start { env: &stream_env(), hide_first: hidden, log: true };
-            let (child, log) = hidden::Child::start(exe, &stream_args(host, s), &how)?;
+            let (child, log) = hidden::Child::start(exe, &stream_args(host, s, REVERSE_SCROLL.load(std::sync::atomic::Ordering::Relaxed)), &how)?;
             Viewer { child, log }
         };
         #[cfg(not(windows))]
         let viewer = {
             let _ = hidden;
-            let mut cmd = command(exe, stream_args(host, s));
+            let mut cmd = command(exe, stream_args(host, s, REVERSE_SCROLL.load(std::sync::atomic::Ordering::Relaxed)));
             cmd.envs(stream_env());
             Viewer { child: cmd.spawn()? }
         };
@@ -468,20 +480,31 @@ mod tests {
     #[test]
     fn stream_args_windowed() {
         assert_eq!(
-            stream_args("192.168.1.50", &settings(WindowMode::Windowed)),
+            stream_args("192.168.1.50", &settings(WindowMode::Windowed), false),
             [
                 "stream", "192.168.1.50", "Desktop",
                 "--resolution", "2560x1440", "--fps", "60", "--bitrate", "30000",
                 "--display-mode", "windowed",
                 "--absolute-mouse", "--capture-system-keys", "never",
+                "--no-reverse-scroll-direction",
             ]
         );
+    }
+
+    /// Reverse scrolling (the PC's setting, on by default): the Mac scrolls the other way round in
+    /// the display window too. Said either way, so Moonlight's own saved choice never decides.
+    #[test]
+    fn the_stream_scrolls_the_way_the_setting_says() {
+        let on = stream_args("h", &settings(WindowMode::Windowed), true);
+        assert!(on.contains(&"--reverse-scroll-direction".to_string()));
+        assert!(!on.contains(&"--no-reverse-scroll-direction".to_string()));
+        assert!(stream_args("h", &settings(WindowMode::Windowed), false).contains(&"--no-reverse-scroll-direction".to_string()));
     }
 
     #[test]
     fn full_screen_still_streams_in_a_window() {
         // The display window goes full screen around it.
-        let args = stream_args("h", &settings(WindowMode::Borderless));
+        let args = stream_args("h", &settings(WindowMode::Borderless), false);
         let i = args.iter().position(|a| a == "--display-mode").unwrap();
         assert_eq!(args[i + 1], "windowed");
     }

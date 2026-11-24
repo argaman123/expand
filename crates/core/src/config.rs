@@ -135,6 +135,9 @@ pub struct Config {
     /// PC: while the Mac has the keyboard, Ctrl reaches it as Command and Windows as Control.
     #[serde(default = "default_true")]
     pub ctrl_as_cmd: bool,
+    /// PC: the wheel scrolls the Mac the other way round (mouse sharing and the display).
+    #[serde(default = "default_true")]
+    pub reverse_scroll: bool,
 }
 
 fn default_true() -> bool {
@@ -245,6 +248,7 @@ impl Config {
             language_follow: true,
             start_display_on_connect: false,
             ctrl_as_cmd: true,
+            reverse_scroll: true,
         }
     }
 
@@ -475,9 +479,9 @@ window_mode = "windowed"
         std::fs::write(&path, OLD_FILE).unwrap();
         let c = Config::load(&path).unwrap();
         assert!(!c.start_display_on_connect);
-        assert!(c.ctrl_as_cmd);
+        assert!(c.ctrl_as_cmd && c.reverse_scroll);
         let new = Config::default_new();
-        assert!(!new.start_display_on_connect && new.ctrl_as_cmd);
+        assert!(!new.start_display_on_connect && new.ctrl_as_cmd && new.reverse_scroll);
     }
 
     // Live check, task 9: the id a 1.0 Mac kept for its PC can be stale (1.0 never checked it),

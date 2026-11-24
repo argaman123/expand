@@ -110,11 +110,11 @@ html:has(.ss-win.mica), html:has(.ss-win.mica) body { background: transparent; }
 .ss-floor { width: 100px; height: 1px; transform-origin: 0 0; background: rgba(255, 255, 255, .1); }
 /* The stand, one piece (the owner's pick, round 3): a wide back plate leaning behind the screen,
    in its shadow at the top, filleted into a wider foot whose top face catches the light. */
-.ss-neck { overflow: visible; border-radius: 2px 2px 0 0; background: linear-gradient(#18191b, #2a2b2f 55%, #323337); }
+.ss-neck { overflow: visible; border-radius: 2px 2px 0 0; background: linear-gradient(#0c0c0d, #151517 55%, #1a1a1c); }
 .ss-neck::before { content: ""; position: absolute; left: -8px; right: -8px; bottom: 0; height: 8px;
-  background: radial-gradient(circle at 0 0, transparent 7.5px, #323337 8px) left bottom / 8px 8px no-repeat,
-    radial-gradient(circle at 100% 0, transparent 7.5px, #323337 8px) right bottom / 8px 8px no-repeat; }
-.ss-foot { border-radius: 3px 3px 2px 2px; background: linear-gradient(#3e3f44 0, #323337 35%, #26272a); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); }
+  background: radial-gradient(circle at 0 0, transparent 7.5px, #1a1a1c 8px) left bottom / 8px 8px no-repeat,
+    radial-gradient(circle at 100% 0, transparent 7.5px, #1a1a1c 8px) right bottom / 8px 8px no-repeat; }
+.ss-foot { border-radius: 3px 3px 2px 2px; background: linear-gradient(#222225 0, #1a1a1c 35%, #121213); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05); }
 .ss-bezel { padding: 4px; border-radius: 6px; background: #111113; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
 .ss-scr { position: relative; width: 100%; height: 100%; border-radius: 2px; overflow: hidden; background: #26272b; }
 /* The monitors' screens: a dim wash in the brand's colours, blue light from the top left, a
@@ -150,19 +150,18 @@ html[data-still] .ss-wall-pic::before { animation-play-state: paused; }
 .ss-macscreen.on.windowed { transform: scale(.8); box-shadow: 0 4px 14px rgba(0, 0, 0, .45); }
 .ss-macscreen .w1 { position: absolute; left: 14%; top: 16%; width: 44%; height: 54%; border-radius: 8px; background: #fafafa; box-shadow: 0 3px 12px rgba(0, 0, 0, .16); }
 .ss-macscreen .w2 { position: absolute; left: 42%; top: 32%; width: 44%; height: 52%; border-radius: 8px; background: #2a2b2f; box-shadow: 0 5px 16px rgba(0, 0, 0, .26); }
-/* A monitor the Mac's display can be shown on: on hover (or keyboard focus) its screen lifts a
-   little and shows a Show here button, above where a MacBook under it would stand. */
-.ss-showhere { position: absolute; left: 50%; top: 32%; z-index: 2; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px;
-  height: 28px; padding: 0 12px; border: 0; border-radius: 4px; white-space: nowrap; cursor: pointer;
-  font: 12px/16px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: #fff;
-  background: rgba(32, 32, 32, .82); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14), 0 4px 12px rgba(0, 0, 0, .3);
-  opacity: 0; pointer-events: none; transition: opacity .15s; }
-.ss-showhere svg { width: 16px; height: 16px; }
+/* A monitor the Mac's display can be shown on (round 4, the owner: the whole screen, not a
+   floating button): on hover (or keyboard focus) its whole screen dims under a see-through layer
+   with Show here in the middle, and the layer is the button. It stays that dark layer under the
+   pointer (the owner: no change to a lighter one); pressed, a little darker. */
+.ss-showhere { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  padding: 0; border: 0; border-radius: 2px; cursor: pointer;
+  font: 600 12px/16px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: #fff; white-space: nowrap;
+  background: rgba(12, 14, 22, .58); opacity: 0; pointer-events: none; transition: opacity .15s, background-color .15s; }
+.ss-showhere svg { width: 20px; height: 20px; }
 .ss-desk-mon.can-show:hover .ss-showhere, .ss-showhere:focus-visible { opacity: 1; pointer-events: auto; }
-.ss-showhere:hover { background: var(--colorBrandBackground); box-shadow: none; }
-.ss-showhere:active { background: var(--colorBrandBackgroundPressed); }
-.ss-showhere:focus-visible { outline: 2px solid var(--colorStrokeFocus2); outline-offset: 2px; }
-.ss-desk-mon.can-show:hover .ss-bezel, .ss-desk-mon.can-show:focus-within .ss-bezel { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22); }
+.ss-showhere:active { background: rgba(12, 14, 22, .7); }
+.ss-showhere:focus-visible { outline: 2px solid var(--colorStrokeFocus2); outline-offset: -2px; } /* inside: the screen clips */
 .ss-slot { border-radius: 6px; border: 1.5px dashed rgba(255, 255, 255, .28); opacity: 0; pointer-events: none; }
 .ss-slot.visible { opacity: 1; }
 /* The crossing edge (the owner's pick, round 3): light along the whole edge, a bright soft band
@@ -186,31 +185,17 @@ html[data-still] .ss-wall-pic::before { animation-play-state: paused; }
 .ss-edge.across::after { height: 42px; -webkit-mask-image: linear-gradient(180deg, #000, rgb(0 0 0 / .55) 22%, rgb(0 0 0 / .18) 55%, transparent);
   mask-image: linear-gradient(180deg, #000, rgb(0 0 0 / .55) 22%, rgb(0 0 0 / .18) 55%, transparent); }
 .ss-edge.on { opacity: 1; transition-delay: .35s; } /* after the arrangement has glided into place */
-/* The Mac's light coming in through that edge (Desk.tsx): placed at the edge's middle, a soft
-   glow in the brand's colours that is brightest at the edge, washes out over the MacBook's side
-   and reaches, fainter and bluer, into the PC's. Under the whole window's content. It holds still:
-   only a change of state (or of place) animates, once, so an idle window draws no frames.
-   Its strength follows the window (useHeat's --ss-heat, 0..1): full when the window touches the
-   edge the cursor crosses, faint a monitor away. */
-.ss-aura { position: absolute; left: 0; top: 0; z-index: -1; width: 0; height: 0; pointer-events: none; opacity: 0;
-  transition: opacity 1.6s ease, transform .4s var(--ss-ease); }
-.ss-aura.still { transition: opacity 1.6s ease; }
-.ss-aura.on, .ss-heat.on { opacity: 1; }
-.ss-aura.dim, .ss-aura.on.lifted, .ss-heat.dim { opacity: .4; }
-.ss-aura.gone, .ss-aura.off { opacity: 0; }
-.ss-aura-light { position: absolute; left: -70vmax; top: -70vmax; width: 140vmax; height: 140vmax;
-  opacity: calc(.4 + .6 * var(--ss-heat, 1)); transition: opacity .6s ease;
-  /* the edge, the MacBook's side, and the PC's side; for a MacBook on the right */
-  background:
-    radial-gradient(9vmax 15vmax at 51% 50%, rgb(var(--ss-rgb-core) / .3), rgb(var(--ss-rgb-core-out) / .12) 45%, transparent 100%),
-    radial-gradient(52vmax 40vmax at 60% 50%, rgb(var(--ss-rgb-wash) / .22), rgb(var(--ss-rgb-wash-out) / .1) 50%, transparent 100%),
-    radial-gradient(60vmax 40vmax at 40% 48%, rgb(var(--ss-rgb-reach) / .09), rgb(var(--ss-rgb-reach) / .04) 50%, transparent 100%); }
+/* The Mac's light (Desk.tsx): only in through the window's side toward the Mac (round 4, the
+   owner: no spot of light at the edge on the desk too). On while connected, dimmer while
+   connecting; its strength follows the window (useHeat's --ss-heat, 0..1). */
+.ss-heat.on { opacity: 1; }
+.ss-heat.dim { opacity: .4; }
 /* The light in through the window's own side, from where the Mac is: at --ss-along on that side,
    as strong as --ss-heat. The whole window's layer; the glow fades out inside it. */
 .ss-heat { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; opacity: 0; transition: opacity 1.6s ease; }
 .ss-heat-light { position: absolute; right: 0; top: var(--ss-along, 50%); width: 200vmin; height: 250vmin; transform: translate(50%, -50%);
-  background: radial-gradient(closest-side, rgb(var(--ss-rgb-core) / .2), rgb(var(--ss-rgb-wash) / .12) 35%, rgb(var(--ss-rgb-wash-out) / .06) 68%, transparent);
-  opacity: calc(.3 + .7 * var(--ss-heat, 0)); transition: opacity .6s ease, top .6s var(--ss-ease), left .6s var(--ss-ease); }
+  background: radial-gradient(closest-side, rgb(var(--ss-rgb-core) / .3), rgb(var(--ss-rgb-wash) / .17) 35%, rgb(var(--ss-rgb-wash-out) / .08) 68%, transparent);
+  opacity: calc(.04 + .96 * var(--ss-heat, 0)); transition: opacity .15s linear, top .15s linear, left .15s linear; }
 .ss-heat.left .ss-heat-light { right: auto; left: 0; transform: translate(-50%, -50%); }
 .ss-heat.bottom .ss-heat-light { top: auto; right: auto; bottom: 0; left: var(--ss-along, 50%); width: 250vmin; height: 200vmin; transform: translate(-50%, 50%); }
 /* A still grain of a few levels over the light: it breaks the 8-bit steps of its long, faint
@@ -218,19 +203,10 @@ html[data-still] .ss-wall-pic::before { animation-play-state: paused; }
    so it is there only where the light is and fades out with it (no edge, no texture on the plain
    window); painted once, never animated. */
 .ss-win { --ss-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 .2 0 0 0 -.08'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)'/%3E%3C/svg%3E"); }
-.ss-aura-light::after, .ss-heat-light::after { content: ""; position: absolute; inset: 0; background-image: var(--ss-grain); background-size: 128px 128px; }
-.ss-aura-light::after {
-  -webkit-mask-image: radial-gradient(9vmax 15vmax at 51% 50%, #000, rgb(0 0 0 / .45) 45%, transparent 100%),
-    radial-gradient(52vmax 40vmax at 60% 50%, rgb(0 0 0 / .9), rgb(0 0 0 / .35) 50%, transparent 100%),
-    radial-gradient(60vmax 40vmax at 40% 48%, rgb(0 0 0 / .35), rgb(0 0 0 / .12) 50%, transparent 100%);
-  mask-image: radial-gradient(9vmax 15vmax at 51% 50%, #000, rgb(0 0 0 / .45) 45%, transparent 100%),
-    radial-gradient(52vmax 40vmax at 60% 50%, rgb(0 0 0 / .9), rgb(0 0 0 / .35) 50%, transparent 100%),
-    radial-gradient(60vmax 40vmax at 40% 48%, rgb(0 0 0 / .35), rgb(0 0 0 / .12) 50%, transparent 100%); }
+.ss-heat-light::after { content: ""; position: absolute; inset: 0; background-image: var(--ss-grain); background-size: 128px 128px; }
 .ss-heat-light::after {
   -webkit-mask-image: radial-gradient(closest-side, #000, rgb(0 0 0 / .55) 35%, rgb(0 0 0 / .25) 68%, transparent);
   mask-image: radial-gradient(closest-side, #000, rgb(0 0 0 / .55) 35%, rgb(0 0 0 / .25) 68%, transparent); }
-.ss-aura.left .ss-aura-light { transform: scaleX(-1); }
-.ss-aura.under .ss-aura-light { transform: rotate(90deg); }
 .ss-stage:not(.ss-still) :is(.ss-world, .ss-floor, .ss-neck, .ss-foot, .ss-bezel, .ss-mac:not(.dragging)) { transition: transform .4s var(--ss-ease); }
 .ss-stage:not(.ss-still) .ss-slot { transition: opacity .2s, transform .4s var(--ss-ease); }
 
@@ -245,9 +221,11 @@ html[data-still] .ss-wall-pic::before { animation-play-state: paused; }
 .ss-lid-scr { position: relative; height: 100%; border-radius: 1px; overflow: hidden; background: var(--ss-macwall); box-shadow: inset 0 3px 0 rgba(255, 255, 255, .55); }
 .ss-lid-scr i { position: absolute; left: 50%; top: 0; width: 9%; height: 4.5%; transform: translateX(-50%); border-radius: 0 0 2px 2px; background: #0e0e10; }
 .ss-deck { display: none; }
-.ss-lip { width: 100%; flex: 0 0 7%; min-height: 3px; border-radius: 0 0 4px 4px; background: linear-gradient(#3b3c41, #2c2d31 55%, #1f2023);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1); clip-path: polygon(3% 0, 97% 0, 100% 100%, 0 100%); }
-.ss-lip i { display: none; }
+/* The base (round 4, the owner's pick A): flat graphite, a lit top edge, and the thumb notch for
+   opening the lid in the middle of its front. */
+.ss-lip { position: relative; width: 100%; flex: 0 0 7%; min-height: 3px; border-radius: 0 0 4px 4px; background: #2b2c30;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16); clip-path: polygon(3% 0, 97% 0, 100% 100%, 0 100%); }
+.ss-lip i { position: absolute; left: 50%; top: 0; width: 13%; height: 45%; transform: translateX(-50%); border-radius: 0 0 6px 6px; background: #1a1b1e; }
 .ss-desk-err { right: 16px; bottom: 8px; z-index: 4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--colorPaletteRedForeground1); font-size: 12px; line-height: 16px; }
 
 /* Tiles and hover panels */
@@ -334,7 +312,7 @@ html[data-still] .ss-wall-pic::before { animation-play-state: paused; }
   .ss-mp.sel { forced-color-adjust: none; background: Canvas; box-shadow: inset 0 0 0 2px Highlight; color: CanvasText; }
   .ss-edge { forced-color-adjust: none; background: Highlight; }
   .ss-edge::before, .ss-edge::after { display: none; }
-  .ss-aura, .ss-heat { display: none; }
+  .ss-heat { display: none; }
   .ss-showhere, .ss-showhere:hover, .ss-showhere:active { forced-color-adjust: none; background: ButtonFace; color: ButtonText; box-shadow: inset 0 0 0 1px ButtonText; }
   .ss-showhere:hover, .ss-showhere:active { background: Highlight; color: HighlightText; box-shadow: none; }
   .ss-showhere:focus-visible { outline-color: Highlight; }

@@ -73,6 +73,8 @@ export type Status = {
    *  keyboard. Absent from a backend without them (the switches then show disabled). */
   start_display_on_connect?: boolean;
   ctrl_as_cmd?: boolean;
+  /** PC: the wheel scrolls the Mac the other way round (missing from an older app). */
+  reverse_scroll?: boolean;
 };
 
 export type SystemInfo = {
@@ -143,6 +145,7 @@ export const setLanguageFollow = (enabled: boolean) => invoke<void>("set_languag
 export const setPlacement = (side: Side, monitor: number | null) => invoke<void>("set_placement", { side, monitor });
 export const setStartDisplayOnConnect = (enabled: boolean) => invoke<void>("set_start_display_on_connect", { enabled });
 export const setCtrlAsCmd = (enabled: boolean) => invoke<void>("set_ctrl_as_cmd", { enabled });
+export const setReverseScroll = (enabled: boolean) => invoke<void>("set_reverse_scroll", { enabled });
 /** The backend has no such command (one older than the switch calling it): Tauri's own rejection,
  *  `Command <name> not found`, and nothing else. */
 export const isMissingCommand = (e: unknown) => typeof e === "string" && /^Command [\w:|-]+ not found$/.test(e);

@@ -18,6 +18,8 @@ import { PEEK_MS, barTarget } from "./peek";
 const LEAVE_MS = 350;
 /** The bar's fade in and out (ms), as in bar.css. */
 const FADE_MS = 180;
+/** How long the bar takes to slide away (bar.css): the region stays till then, so it never snaps (round 4, the owner). */
+const HIDE_MS = 480;
 /** The keyboard stays this long after the last menu closes (ms): switching from the menu to the
  *  popover closes one just before the other opens. */
 const RELEASE_MS = 150;
@@ -245,9 +247,9 @@ export function NotchBar({ status }: { status: Status | null }) {
     }
     setDrawn(target);
     if (target !== "bar") noTips();
-    // Going: the region goes at once, so the display under it takes clicks straight away (the
-    // fade is cut short). The title bar's popover has nothing to animate away either.
-    const wait = reducedMotion() || popup || target === "hidden" ? 0 : FADE_MS;
+    // Going: the region stays while the bar slides away, so it never snaps out of sight (round 4,
+    // the owner). The title bar's popover has nothing to animate away.
+    const wait = reducedMotion() || popup ? 0 : target === "hidden" ? HIDE_MS : FADE_MS;
     const t = window.setTimeout(() => {
       void askShape(target);
       if (target === "hidden") setPopup(false);

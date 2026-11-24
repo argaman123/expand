@@ -254,6 +254,15 @@ test("the light fades as the window moves away from the edge, and is gone on the
   assert.equal(heatFor(win(-1700, 500), DESK, RIGHT)!.strength, 0, "on monitor 1, with no crossing edge");
 });
 
+test("the light: a slight move off the edge already dims it (round 4: it should respond)", () => {
+  const touching = heatFor(win(2560 - 1240, 300), DESK, RIGHT)!.strength;
+  const nudged = heatFor(win(2560 - 1240 - 100, 300), DESK, RIGHT)!.strength;
+  assert.equal(touching, 1);
+  assert.ok(nudged < 0.9, `100 px off the edge: ${nudged}`);
+  assert.ok(nudged > 0.6, `100 px off the edge: ${nudged}`);
+  assert.ok(heatFor(win(2560 - 1240 - 600, 300), DESK, RIGHT)!.strength < 0.45, "600 px off: well down");
+});
+
 test("the light: maximised or full screen on the edge's monitor is full strength", () => {
   // Windows' maximised rect reaches 8 px past the monitor on every side; full screen is the monitor.
   assert.equal(heatFor({ left: -8, top: -8, right: 2568, bottom: 1400 }, DESK, RIGHT)!.strength, 1);

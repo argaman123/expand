@@ -63,6 +63,8 @@ pub struct Toggles {
     /// The PC's Ctrl keys reach the Mac as Command, and its Windows keys as Control
     /// (`share::keys`).
     pub ctrl_as_cmd: bool,
+    /// The wheel scrolls the Mac the other way round (`wire::Input::scrolled`).
+    pub reverse_scroll: bool,
 }
 
 /// What a running PC connection follows without reconnecting: what is shared, where the Mac

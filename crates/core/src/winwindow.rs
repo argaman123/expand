@@ -1508,6 +1508,28 @@ pub fn plain_overlay(window: isize) {
         let _ = DwmSetWindowAttribute(hwnd(window), DWMWA_WINDOW_CORNER_PREFERENCE, &DWMWCP_DONOTROUND as *const _ as _, 4);
         let _ = DwmSetWindowAttribute(hwnd(window), DWMWA_BORDER_COLOR, &DWM_COLOR_NONE as *const _ as _, 4);
     }
+    no_frame_painting(window);
+}
+
+/// Windows never paints a frame on `window`: as it became the window in front (the bar taking the
+/// keyboard for a menu), Windows drew a whole white title bar ("Sidescreen bar", with its
+/// buttons) over it for a moment, seen live as a white bar behind the bar (round 4). Activation
+/// itself goes on as before. Must be called on `window`'s thread (subclassing).
+pub fn no_frame_painting(window: isize) {
+    use windows::Win32::Foundation::LRESULT;
+    use windows::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
+    use windows::Win32::UI::WindowsAndMessaging::{WM_NCACTIVATE, WM_NCPAINT};
+    unsafe extern "system" fn proc(window: HWND, msg: u32, w: WPARAM, l: LPARAM, _: usize, _: usize) -> LRESULT {
+        match msg {
+            // -1: the activation goes through without the frame being repainted for it.
+            WM_NCACTIVATE => DefSubclassProc(window, msg, w, LPARAM(-1)),
+            WM_NCPAINT => LRESULT(0),
+            _ => DefSubclassProc(window, msg, w, l),
+        }
+    }
+    unsafe {
+        let _ = SetWindowSubclass(hwnd(window), Some(proc), 0x5355, 0);
+    }
 }
 
 thread_local! {

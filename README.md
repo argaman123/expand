@@ -42,7 +42,7 @@ Today Sidescreen links a Windows PC with a Mac.
    - On the PC, choose **Find devices** and type the code.
 3. **Arrange your desk.** Drag the laptop in the picture to where it really sits, then turn on what you want.
 
-Take the mouse and keyboard back at any time with Ctrl+Shift+Alt+Win.
+On the Mac, Ctrl works as ⌘ and Alt as ⌥ Option, and the wheel scrolls the Mac's way (both can be turned off under Mouse and keyboard). Take the mouse and keyboard back at any time with Ctrl+Shift+Alt+Win.
 
 ## Build from source
 

@@ -111,6 +111,18 @@ pub enum ToPc {
     Disconnect,
 }
 
+impl Input {
+    /// The input with its scrolling turned round (`reverse`), both wheels; anything else as it is.
+    /// The owner found the Mac scrolled the wrong way (round 4): on by default, a setting.
+    pub fn scrolled(self, reverse: bool) -> Input {
+        match self {
+            Input::Axis { axis, value } if reverse => Input::Axis { axis, value: -value },
+            Input::AxisDiscrete { axis, value } if reverse => Input::AxisDiscrete { axis, value: -value },
+            other => other,
+        }
+    }
+}
+
 impl From<Event> for Input {
     fn from(e: Event) -> Input {
         match e {
@@ -144,6 +156,15 @@ impl From<Input> for Event {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reversed_scrolling_turns_both_wheels_round_and_nothing_else() {
+        assert_eq!(Input::Axis { axis: 0, value: 3.0 }.scrolled(true), Input::Axis { axis: 0, value: -3.0 });
+        assert_eq!(Input::AxisDiscrete { axis: 1, value: -120 }.scrolled(true), Input::AxisDiscrete { axis: 1, value: 120 });
+        assert_eq!(Input::AxisDiscrete { axis: 0, value: 120 }.scrolled(false), Input::AxisDiscrete { axis: 0, value: 120 });
+        assert_eq!(Input::Motion { dx: 1.5, dy: -2.0 }.scrolled(true), Input::Motion { dx: 1.5, dy: -2.0 });
+        assert_eq!(Input::Key { key: 30, state: 1 }.scrolled(true), Input::Key { key: 30, state: 1 });
+    }
 
     #[test]
     fn every_kind_of_input_survives_the_trip() {

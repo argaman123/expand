@@ -5,6 +5,8 @@ const GAP = 16;
 const SIDE_GAP = 24;
 /** Kept clear round the arrangement, inside the stage, so nothing touches its edge. */
 const PAD = 16;
+/** How much of the room the arrangement takes (round 4, the owner: a little smaller, with air round it). */
+export const DESK_FILL = 0.86;
 /** The largest scale: inches to stage pixels. */
 const MAX_K = 22;
 /** The MacBook drawn as a 13-inch one (the owner's pick, round 3): the drawing's width in inches
@@ -115,7 +117,7 @@ export function layoutDesk(monitors: Monitor[], box: Box, at: string | null, sha
   // Wide enough for the monitors and a MacBook beside them; tall enough for the highest screen.
   const kW = (box.w - 2 * PAD - gaps - SIDE_GAP) / (sumW + macW1);
   const kH = (box.h - 2 * PAD) / Math.max(tallest1 + stand1, macH1);
-  const k = Math.max(0.0001, Math.min(kW, kH, MAX_K));
+  const k = Math.max(0.0001, Math.min(kW, kH, MAX_K) * DESK_FILL);
 
   const macW = Math.round(macW1 * k);
   const macH = Math.round(macH1 * k);
@@ -231,10 +233,14 @@ export type ScreenRect = { left: number; top: number; right: number; bottom: num
 /** The Mac's light in the window: the window's side it comes in from, how strong (0..1) and where
  *  along that side its middle falls (0..1, from the top, or the left for "bottom"). */
 export type Heat = { side: "left" | "right" | "bottom"; strength: number; along: number };
-/** Within this share of the edge monitor's size the window counts as touching the edge (a
- *  maximised window stops at the taskbar, a tenth of a 1440-row monitor at 300%); the light is gone
- *  at the monitor's whole size. */
+/** Within this share of the edge monitor's height a window counts as touching an edge under it
+ *  (a maximised window stops at the taskbar, a tenth of a 1440-row monitor at 300%). A side edge
+ *  has no taskbar in the way: there, only a window that touches it is full (round 4: a slight move
+ *  off it should show). The light is gone at the monitor's whole size. */
 const HEAT_NEAR = 0.11;
+/** How fast the light falls off with the window's distance from the edge (as a share of the
+ *  monitor's size): steep near the edge, so nudging the window shows, with a long faint tail. */
+const HEAT_FALL = 4;
 
 /** The Mac's light for a window at `win`: it comes in from the side of the crossing edge (as the
  *  desk draws it: the leftmost monitor's left, the rightmost's right, or the bottom of the one the
@@ -271,7 +277,7 @@ export function heatFor(win: ScreenRect, monitors: Monitor[], placement: Placeme
   const [a, b] = vertical ? [w.left, w.right] : [w.top, w.bottom];
   const [from, to] = vertical ? [w.top, w.bottom] : [w.left, w.right];
   const across = Math.max(0, a - at, at - b);
-  const near = HEAT_NEAR * reach;
+  const near = vertical ? 0 : HEAT_NEAR * reach;
   // Beside the edge, not across from it (meeting it only at a corner counts as beside): none.
   const beside = to <= lo || from >= hi;
   const t = beside ? 1 : clamp((across - near) / Math.max(1, reach - near));
@@ -279,5 +285,6 @@ export function heatFor(win: ScreenRect, monitors: Monitor[], placement: Placeme
   // the whole window's side (as the page draws it).
   const mid = to < lo ? lo : from > hi ? hi : (Math.max(from, lo) + Math.min(to, hi)) / 2;
   const [wFrom, wTo] = vertical ? [win.top, win.bottom] : [win.left, win.right];
-  return { side, strength: (1 - t) ** 2, along: clamp((mid - wFrom) / Math.max(1, wTo - wFrom)) };
+  const strength = (Math.exp(-HEAT_FALL * t) - Math.exp(-HEAT_FALL)) / (1 - Math.exp(-HEAT_FALL));
+  return { side, strength: clamp(strength), along: clamp((mid - wFrom) / Math.max(1, wTo - wFrom)) };
 }

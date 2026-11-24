@@ -56,7 +56,7 @@ function base(): Status {
     peer_addresses: ["192.168.1.20"],
     latency_ms: q.has("latency") ? Number(q.get("latency")) : 3,
     viewer_monitor: 2,
-    ...(q.has("old") ? {} : { start_display_on_connect: false, ctrl_as_cmd: true }),
+    ...(q.has("old") ? {} : { start_display_on_connect: false, ctrl_as_cmd: true, reverse_scroll: true }),
   };
 }
 
@@ -128,6 +128,7 @@ const replies: Record<string, (args: Record<string, unknown>) => unknown> = {
   set_close_to_tray: ({ enabled }) => set({ close_to_tray: !!enabled }),
   set_start_display_on_connect: ({ enabled }) => set({ start_display_on_connect: !!enabled }),
   set_ctrl_as_cmd: ({ enabled }) => set({ ctrl_as_cmd: !!enabled }),
+  set_reverse_scroll: ({ enabled }) => set({ reverse_scroll: !!enabled }),
   display_start: () => {
     set({ state: "connecting" });
     setTimeout(() => set({ state: "connected" }), 1200);

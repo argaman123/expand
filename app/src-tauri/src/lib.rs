@@ -682,6 +682,15 @@ async fn set_ctrl_as_cmd(app: AppHandle, shared: tauri::State<'_, Shared>, enabl
     Ok(())
 }
 
+/// PC: the wheel scrolls the Mac the other way round. The running connection follows at once;
+/// the display from its next start.
+#[tauri::command]
+async fn set_reverse_scroll(app: AppHandle, shared: tauri::State<'_, Shared>, enabled: bool) -> Result<(), String> {
+    shared.set_reverse_scroll(enabled)?;
+    sync_mouse(&app).await;
+    Ok(())
+}
+
 /// PC: the display starts whenever the connection to the Mac comes up.
 #[tauri::command]
 fn set_start_display_on_connect(app: AppHandle, shared: tauri::State<'_, Shared>, enabled: bool) -> Result<(), String> {
@@ -1358,6 +1367,7 @@ pub fn run() {
             set_clipboard_sharing,
             set_language_follow,
             set_ctrl_as_cmd,
+            set_reverse_scroll,
             set_start_display_on_connect,
             get_monitors,
             close_window,

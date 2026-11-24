@@ -582,6 +582,7 @@ mod tests {
             language_follow: true,
             start_display_on_connect: false,
             ctrl_as_cmd: true,
+            reverse_scroll: true,
             peer_addresses: Vec::new(),
             latency_ms: None,
             viewer_monitor: None,

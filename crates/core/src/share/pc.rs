@@ -253,6 +253,8 @@ async fn session(
     let mut shortcuts = crate::language::Shortcuts::default();
     // Ctrl as Command on the Mac, Windows as Control (when switched on).
     let mut cmd_keys = CmdKeys::new(now.ctrl_as_cmd);
+    // The wheel the other way round on the Mac (when switched on).
+    let mut reverse_scroll = now.reverse_scroll;
     // The PC's keyboard layout while the Mac has the keyboard.
     let mut layout = 0usize;
     let mac_name = if mac.name.is_empty() { mac.id.clone() } else { mac.name.clone() };
@@ -342,7 +344,7 @@ async fn session(
                 };
                 // The shortcuts above read the keys as pressed; the Mac gets them swapped.
                 if matches!(action, KeyAction::Forward | KeyAction::ForwardAndSwitch)
-                    && !send_all(&mut to_mac, cmd_keys.input(Input::from(event))).await
+                    && !send_all(&mut to_mac, cmd_keys.input(Input::from(event).scrolled(reverse_scroll))).await
                 {
                     break SessionEnd::Network(LOST.to_string());
                 }
@@ -468,6 +470,7 @@ async fn session(
                 }
                 language_on = language;
                 cmd_keys.set(now.ctrl_as_cmd);
+                reverse_scroll = now.reverse_scroll;
                 // Ctrl as ⌘ goes to the Mac too, for typing into the display window.
                 if (mouse, clip, now.display, now.ctrl_as_cmd) != (mouse_on, clipboard_on, display_on, ctrl_as_cmd_on) {
                     let uses = ToMac::Uses { mouse, clipboard: clip, display: now.display, ctrl_as_cmd: now.ctrl_as_cmd };
@@ -692,7 +695,7 @@ mod tests {
             token: TOKEN.into(),
             placement: Placement::default(),
             stream: (1920, 1080),
-            toggles: Toggles { mouse: false, clipboard: true, language: true, display: false, ctrl_as_cmd: true },
+            toggles: Toggles { mouse: false, clipboard: true, language: true, display: false, ctrl_as_cmd: true, reverse_scroll: false },
         }
     }
 
@@ -769,7 +772,7 @@ mod tests {
     #[test]
     fn roles_with_different_toggles_placement_or_stream_are_the_same_connection() {
         let mut other = settings();
-        other.toggles = Toggles { mouse: true, clipboard: false, language: false, display: true, ctrl_as_cmd: false };
+        other.toggles = Toggles { mouse: true, clipboard: false, language: false, display: true, ctrl_as_cmd: false, reverse_scroll: true };
         assert_eq!(settings(), other, "toggles never restart the connection");
         other.placement = Placement { side: crate::side::Side::Bottom, monitor: Some(2) };
         other.stream = (1280, 720);

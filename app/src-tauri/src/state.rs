@@ -66,6 +66,8 @@ pub struct StatusDto {
     pub start_display_on_connect: bool,
     /// PC: Ctrl reaches the Mac as Command (and Windows as Control) while it has the keyboard.
     pub ctrl_as_cmd: bool,
+    /// PC: the wheel scrolls the Mac the other way round (sharing and the display).
+    pub reverse_scroll: bool,
     /// Other addresses the Mac reported (Tailscale, a cable link, another network).
     pub peer_addresses: Vec<String>,
     /// PC side: the smoothed round trip to the connected Mac, in ms.
@@ -380,6 +382,7 @@ fn viewer_monitor_number(_peer: Option<&Peer>) -> Option<u32> {
 
 impl AppState {
     pub fn new(cfg: Config, path: PathBuf, config_error: Option<String>) -> AppState {
+        sidescreen_core::moonlight::set_reverse_scroll(cfg.reverse_scroll);
         AppState {
             want_connection: AtomicBool::new(cfg.auto_connect),
             connect_asked: AtomicBool::new(false),
@@ -541,6 +544,13 @@ impl AppState {
 
     pub fn set_ctrl_as_cmd(&self, enabled: bool) -> Result<(), String> {
         self.update(|cfg| cfg.ctrl_as_cmd = enabled)
+    }
+
+    /// The next display started follows too (`moonlight::set_reverse_scroll`).
+    pub fn set_reverse_scroll(&self, enabled: bool) -> Result<(), String> {
+        self.update(|cfg| cfg.reverse_scroll = enabled)?;
+        sidescreen_core::moonlight::set_reverse_scroll(enabled);
+        Ok(())
     }
 
     pub fn set_start_display_on_connect(&self, enabled: bool) -> Result<(), String> {
@@ -978,6 +988,7 @@ impl AppState {
                     language: cfg.mouse_sharing && cfg.language_follow,
                     display: self.has_session(),
                     ctrl_as_cmd: cfg.ctrl_as_cmd,
+                    reverse_scroll: cfg.reverse_scroll,
                 },
             }));
         }
@@ -1370,6 +1381,7 @@ impl AppState {
             language_follow: cfg.language_follow,
             start_display_on_connect: cfg.start_display_on_connect,
             ctrl_as_cmd: cfg.ctrl_as_cmd,
+            reverse_scroll: cfg.reverse_scroll,
             peer_addresses: peer.map(|p| p.addresses.clone()).unwrap_or_default(),
             latency_ms,
             viewer_monitor: viewer_monitor_number(peer),
@@ -1845,6 +1857,23 @@ mod tests {
         assert!(!p.toggles.ctrl_as_cmd);
         assert!(!a.status().ctrl_as_cmd);
         assert!(!Config::load(&a.path).unwrap().ctrl_as_cmd);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn reverse_scroll_is_on_by_default_and_reaches_sharing() {
+        use sidescreen_core::mouse::MouseRole;
+        let (a, _d) = app();
+        paired(&a);
+        assert!(a.status().reverse_scroll);
+        let MouseRole::Pc(p) = a.mouse_role().unwrap();
+        assert!(p.toggles.reverse_scroll);
+        a.set_reverse_scroll(false).unwrap();
+        let MouseRole::Pc(p) = a.mouse_role().unwrap();
+        assert!(!p.toggles.reverse_scroll);
+        assert!(!a.status().reverse_scroll);
+        assert!(!Config::load(&a.path).unwrap().reverse_scroll);
+        a.set_reverse_scroll(true).unwrap();
     }
 
     fn connected() -> MouseStatus {

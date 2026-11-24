@@ -16,6 +16,8 @@ html:has(.ss-display), body:has(.ss-display), #root:has(.ss-display) { height: 1
 .ss-dtb-name { font-size: 12px; color: rgba(255, 255, 255, .86); white-space: nowrap; }
 .ss-dtb-data { font-size: 12px; color: var(--colorNeutralForeground3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ss-dtb-fill { flex: 1; height: 40px; }
+/* The window's top edge, over the title bar's top rows (not the caption buttons'): resizes it. */
+.ss-dtb-grip { position: absolute; left: 0; right: 184px; top: 0; height: 4px; cursor: n-resize; }
 .ss-dtb-caps { display: flex; }
 .ss-dtb-cap { width: 46px; height: 40px; padding: 0; border: 0; background: transparent; display: grid; place-items: center; cursor: default; }
 .ss-dtb-cap:hover { background: rgba(255, 255, 255, .08); }

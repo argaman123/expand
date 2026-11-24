@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "rea
 import { Dropdown, Link, Option, Spinner, Switch, ToggleButton } from "@fluentui/react-components";
 import { Desktop20Regular, KeyboardMouse20Regular } from "@fluentui/react-icons";
 import {
-  connectMac, displayFullScreen, displayStart, displayStop, displayWindow, isMissingCommand, saveSettings, setClipboardSharing, setCtrlAsCmd,
+  connectMac, displayFullScreen, displayStart, displayStop, displayWindow, isMissingCommand, saveSettings, setClipboardSharing, setCtrlAsCmd, setReverseScroll,
   setLanguageFollow, setMouseSharing, type Settings, type Status, type WindowMode,
 } from "../api";
 import { HoverPanel } from "./HoverPanel";
@@ -18,7 +18,7 @@ function Row({ label, id, children }: { label: string; id?: string; children: Re
 const CONNECT_WAIT_MS = 10_000;
 
 export function Controls({ status }: { status: Status }) {
-  const ids = { res: useId(), fps: useId(), rate: useId(), clip: useId(), lang: useId(), cmd: useId() };
+  const ids = { res: useId(), fps: useId(), rate: useId(), clip: useId(), lang: useId(), cmd: useId(), scroll: useId() };
   const monitors = useMonitors();
   const [panel, setPanel] = useState<"mouse" | "display" | null>(null); // the hover panel showing: one at a time
   const [error, setError] = useState<Failure | null>(null);
@@ -192,6 +192,16 @@ export function Controls({ status }: { status: Status }) {
                 onChange={(_, d) => changeCtrlAsCmd(d.checked)}
               />
             </Row>
+            <Row label="Reverse scrolling" id={ids.scroll}>
+              <Switch
+                id={ids.scroll}
+                checked={status.reverse_scroll ?? false}
+                disabled={status.reverse_scroll === undefined}
+                onChange={(_, d) => attempt(() => setReverseScroll(d.checked))}
+              />
+            </Row>
+            {/* Alt is always Option on the Mac (share/keys.rs, and Sunshine in the display): said, as the owner asked (round 4). */}
+            <Row label="Option ⌥"><span className="ss-keys"><kbd>Alt</kbd></span></Row>
             <Row label="Return to PC"><span className="ss-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Alt</kbd><kbd>Win</kbd></span></Row>
           </div>
         </HoverPanel>

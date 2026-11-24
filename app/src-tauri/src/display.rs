@@ -733,7 +733,11 @@ mod imp {
         if w <= 0 || h <= 0 || winwindow::is_minimized(parent) {
             return;
         }
-        winwindow::set_resize_borders(parent, !full_screen);
+        // Never shown: as a window, Windows' own invisible frame takes the resize at the sides and
+        // bottom, and Tauri's edges are cut down to the top rows, where they drew the window's
+        // plain grey over the title bar (seen live, round 4). The title bar's top edge resizes
+        // instead (DisplayTitleBar).
+        winwindow::set_resize_borders(parent, false);
         if child != 0 {
             winwindow::place_child(child, child_rect(w, h, full_screen, winwindow::scale_of_window(parent)));
         }
