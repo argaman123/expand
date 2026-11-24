@@ -1,0 +1,257 @@
+/* The Mac's first-run setup guide. Scoped so it never touches the Fluent PC window. */
+html:has(.mac-setup),
+body:has(.mac-setup) {
+  margin: 0;
+  background: #151517;
+  color: #ececf0;
+}
+body:has(.mac-setup) {
+  user-select: none;
+  cursor: default;
+}
+
+.mac-setup {
+  color-scheme: dark;
+  --bg: #151517;
+  --card: #1e1e21;
+  --card-line: rgba(255, 255, 255, 0.07);
+  --row-line: rgba(255, 255, 255, 0.06);
+  --text: #ececf0;
+  --muted: #8e8e96;
+  --faint: #5f5f66;
+  --control: #2a2a2e;
+  --control-hover: #333338;
+  --accent: #dcdce1;
+  --accent-text: #141416;
+  --ok: #4cc38a;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  padding: 20px 20px 28px;
+  color: var(--text);
+}
+.mac-setup *,
+.mac-setup *::before,
+.mac-setup *::after {
+  box-sizing: border-box;
+}
+.mac-setup .muted {
+  color: var(--muted);
+}
+.mac-setup .small {
+  font-size: 12px;
+}
+
+/* Header */
+.mac-setup .top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.mac-setup .app-icon {
+  width: 36px;
+  height: 36px;
+}
+.mac-setup .titles h1 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.mac-setup .titles p {
+  margin: 1px 0 0;
+  font-size: 12px;
+}
+
+.mac-setup .hero {
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 12px;
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.mac-setup .hero-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.mac-setup .card {
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.mac-setup .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 46px;
+  padding: 9px 14px;
+  margin: 0;
+}
+.mac-setup .row-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.mac-setup .label {
+  font-weight: 500;
+}
+.mac-setup .sub {
+  color: var(--muted);
+  font-size: 12px;
+}
+.mac-setup .note {
+  margin: 7px 4px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Controls */
+.mac-setup button,
+.mac-setup input {
+  font: inherit;
+  color: inherit;
+}
+.mac-setup button {
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease, opacity 120ms ease;
+}
+.mac-setup button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.mac-setup .primary {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.mac-setup .primary:hover:not(:disabled) {
+  background: #ffffff;
+}
+.mac-setup .primary.done {
+  margin-top: 14px;
+}
+.mac-setup .secondary {
+  background: var(--control);
+  color: var(--text);
+}
+.mac-setup .secondary:hover:not(:disabled) {
+  background: var(--control-hover);
+}
+.mac-setup button:focus-visible,
+.mac-setup input:focus-visible {
+  outline: 2px solid rgba(220, 220, 225, 0.6);
+  outline-offset: 1px;
+}
+
+/* Switch */
+.mac-setup .switch {
+  appearance: none;
+  flex: none;
+  width: 38px;
+  height: 22px;
+  margin: 0;
+  border-radius: 11px;
+  background: #3a3a3f;
+  position: relative;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+.mac-setup .switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #f4f4f6;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  transition: transform 160ms ease, background 160ms ease;
+}
+.mac-setup .switch:checked {
+  background: var(--accent);
+}
+.mac-setup .switch:checked::after {
+  transform: translateX(16px);
+  background: var(--accent-text);
+}
+
+/* Notices */
+.mac-setup .notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(224, 168, 58, 0.1);
+  border: 1px solid rgba(224, 168, 58, 0.35);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+.mac-setup .notice p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Setup steps */
+.mac-setup .steps {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.mac-setup .step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--card-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.mac-setup .step .row-text {
+  flex: 1;
+}
+.mac-setup .step-mark {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--faint);
+  position: relative;
+  transition: background 200ms ease, border-color 200ms ease;
+}
+.mac-setup .step[data-done="true"] .step-mark {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+.mac-setup .step[data-done="true"] .step-mark::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid #102a1d;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.mac-setup .step[data-done="true"] button {
+  visibility: hidden;
+}

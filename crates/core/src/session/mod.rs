@@ -34,9 +34,19 @@ pub trait HostEngines: Send {
 /// The viewer window on the PC.
 #[async_trait]
 pub trait ViewerEngine: Send {
+    /// Whether the viewer still counts itself paired with the stream host at `host`; `None` when
+    /// it cannot tell. Asked only while the host is running.
+    async fn is_paired(&mut self, host: &str) -> std::io::Result<Option<bool>>;
     async fn pair(&mut self, host: &str, pin: &str) -> std::io::Result<bool>;
     async fn start(&mut self, host: &str, s: &StreamSettings) -> std::io::Result<()>;
-    /// Resolves when the viewer window exits.
+    /// Resolves when the viewer window exits, or the viewer puts up an error ([`last_words`]).
+    ///
+    /// [`last_words`]: ViewerEngine::last_words
     async fn closed(&mut self);
+    /// The error the viewer put up for the user, if that is why [`closed`](ViewerEngine::closed)
+    /// resolved (taken once): the session fails with it, and the viewer (with its message) goes.
+    fn last_words(&mut self) -> Option<String> {
+        None
+    }
     async fn stop(&mut self);
 }

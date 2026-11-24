@@ -34,6 +34,16 @@ pub trait Replay: Send {
     fn set_language(&mut self, language: &str);
 }
 
+/// What a Mac that cannot replay input (no Accessibility permission) answers: the pointer
+/// entering is handed straight back where it left, so the PC never captures its mouse and
+/// keyboard for a Mac that would drop them.
+pub fn bounce(message: &ToMac) -> Option<HandBack> {
+    match message {
+        ToMac::Enter { along, .. } => Some(HandBack { on_virtual: None, along: *along }),
+        _ => None,
+    }
+}
+
 pub struct Follower {
     active: bool,
     pc_side: Side,
@@ -63,7 +73,7 @@ impl Follower {
                 }
                 None
             }
-            ToMac::Ping | ToMac::Clip(_) => None,
+            ToMac::Ping | ToMac::Clip(_) | ToMac::Bye | ToMac::Uses { .. } | ToMac::Latency { .. } => None,
             ToMac::Language(language) => {
                 replay.set_language(&language);
                 None
@@ -117,6 +127,16 @@ impl Follower {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Final review I4 follow-up: once the Mac connects without Accessibility, the PC captured at
+    // the edge and the Mac dropped everything, leaving the user without a mouse.
+    #[test]
+    fn without_input_replay_the_pointer_is_handed_straight_back() {
+        let back = bounce(&ToMac::Enter { pc_side: Side::Left, along: 0.25 }).expect("handed back");
+        assert_eq!((back.on_virtual, back.along), (None, 0.25));
+        assert_eq!(bounce(&ToMac::Input(Input::Motion { dx: 1.0, dy: 0.0 })), None);
+        assert_eq!(bounce(&ToMac::Leave), None);
+    }
 
     const MAIN: Area = Area { left: 0.0, top: 0.0, right: 1728.0, bottom: 1117.0 };
     const VIRTUAL: Area = Area { left: -2560.0, top: -161.0, right: 0.0, bottom: 1279.0 };

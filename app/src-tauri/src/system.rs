@@ -110,13 +110,33 @@ pub fn set_start_at_login(app: AppHandle, enabled: bool) -> Result<(), String> {
 #[tauri::command]
 pub fn install_missing() -> Result<(), String> {
     let (program, args) = install_command(needed_app()).ok_or("nothing to install")?;
-    std::process::Command::new(program).args(&args).spawn().map_err(|e| format!("could not start the installer: {e}"))?;
+    let child = std::process::Command::new(program).args(&args).spawn().map_err(|e| format!("could not start the installer: {e}"))?;
+    reap_in_background(child);
     Ok(())
+}
+
+/// Waits for `child` on its own thread, so it is reaped when it ends (no zombie) without
+/// holding anyone up.
+fn reap_in_background(mut child: std::process::Child) -> std::thread::JoinHandle<std::io::Result<std::process::ExitStatus>> {
+    std::thread::spawn(move || child.wait())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_started_installer_is_waited_for_in_the_background() {
+        let child = if cfg!(windows) {
+            std::process::Command::new("cmd").args(["/C", "exit 3"]).spawn()
+        } else {
+            std::process::Command::new("/bin/sh").args(["-c", "exit 3"]).spawn()
+        }
+        .unwrap();
+        // Joined here only to see it: in the app nothing waits on it, yet it is reaped.
+        let status = reap_in_background(child).join().unwrap().unwrap();
+        assert_eq!(status.code(), Some(3));
+    }
 
     #[cfg(windows)]
     #[test]

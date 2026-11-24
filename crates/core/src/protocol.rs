@@ -6,16 +6,48 @@ use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWr
 
 pub const MAX_LINE: usize = 64 * 1024;
 
+/// Sidescreen's protocol version, said in the control link's hello and challenge and in the
+/// mouse and keyboard channel's hellos. 2: the sharing channel says its version and claims the
+/// Mac only after the PC's proof. 3: pairing is a SPAKE2 exchange keyed by the code (the token
+/// never crosses the network in the clear). A side that says no version is older than 3.
+/// Versions that differ do not pair, and do not share the mouse and keyboard.
+pub const PROTOCOL: u32 = 3;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Message {
-    Hello { name: String, id: String },
-    Challenge { nonce: String },
+    /// PC to Mac, first. `version` is [`PROTOCOL`] (0 from a PC older than 3).
+    Hello {
+        name: String,
+        id: String,
+        #[serde(default)]
+        version: u32,
+    },
+    /// Mac to PC. `version` is [`PROTOCOL`] (0 from a Mac older than 3).
+    Challenge {
+        nonce: String,
+        #[serde(default)]
+        version: u32,
+    },
     Auth { mac: String },
     AuthOk,
     AuthFailed,
-    PairRequest { name: String, id: String, token: String },
-    PairResult { accepted: bool },
+    /// PC to Mac: pair with the code the Mac shows (see `link::pairing`).
+    PairStart,
+    /// Mac to PC: the Mac's SPAKE2 message (hex), and who the Mac is. Both are bound into the
+    /// exchange, so a changed name or id is found out.
+    PairKey { id: String, name: String, pake: String },
+    /// PC to Mac: the PC's SPAKE2 message and its key confirmation (both hex).
+    PairConfirm { pake: String, confirm: String },
+    /// Mac to PC, last. When accepted: the Mac's key confirmation, and the new token sealed with
+    /// ChaCha20-Poly1305 under a key only the two ends of this exchange have (both hex).
+    PairResult {
+        accepted: bool,
+        #[serde(default)]
+        confirm: String,
+        #[serde(default)]
+        token: String,
+    },
     Start { width: u32, height: u32, fps: u32 },
     Ready,
     Failed { part: String, reason: String },
@@ -68,13 +100,16 @@ mod tests {
 
     fn all_variants() -> Vec<Message> {
         vec![
-            Message::Hello { name: "pc".into(), id: "1".into() },
-            Message::Challenge { nonce: "aa".into() },
+            Message::Hello { name: "pc".into(), id: "1".into(), version: PROTOCOL },
+            Message::Challenge { nonce: "aa".into(), version: PROTOCOL },
             Message::Auth { mac: "bb".into() },
             Message::AuthOk,
             Message::AuthFailed,
-            Message::PairRequest { name: "pc".into(), id: "1".into(), token: "tok".into() },
-            Message::PairResult { accepted: true },
+            Message::PairStart,
+            Message::PairKey { id: "mac1".into(), name: "MacBook".into(), pake: "42ab".into() },
+            Message::PairConfirm { pake: "41cd".into(), confirm: "ef".into() },
+            Message::PairResult { accepted: true, confirm: "ab".into(), token: "cd".into() },
+            Message::PairResult { accepted: false, confirm: String::new(), token: String::new() },
             Message::Start { width: 2560, height: 1440, fps: 60 },
             Message::Ready,
             Message::Failed { part: "Sunshine".into(), reason: "already running".into() },
@@ -113,6 +148,40 @@ mod tests {
     fn arrangement_has_the_exact_wire_form() {
         let m = Message::Arrangement { mac_side: Side::Right };
         assert_eq!(serde_json::to_string(&m).unwrap(), r#"{"type":"arrangement","mac_side":"right"}"#);
+    }
+
+    #[test]
+    fn hellos_from_before_version_3_read_as_version_0() {
+        let hello: Message = serde_json::from_str(r#"{"type":"hello","name":"pc","id":"1"}"#).unwrap();
+        assert_eq!(hello, Message::Hello { name: "pc".into(), id: "1".into(), version: 0 });
+        let challenge: Message = serde_json::from_str(r#"{"type":"challenge","nonce":"aa"}"#).unwrap();
+        assert_eq!(challenge, Message::Challenge { nonce: "aa".into(), version: 0 });
+    }
+
+    /// An older PC (or Mac) reads a challenge (or hello) that says a version, ignoring it.
+    #[test]
+    fn the_version_is_an_extra_field_older_sides_can_skip() {
+        assert_eq!(
+            serde_json::to_string(&Message::Challenge { nonce: "aa".into(), version: 3 }).unwrap(),
+            r#"{"type":"challenge","nonce":"aa","version":3}"#
+        );
+    }
+
+    /// Like 1.1 (no `deny_unknown_fields`), a side reads a hello or challenge with fields it does
+    /// not know: a 1.1 peer still authenticates with a newer one, and is then told to update.
+    #[test]
+    fn unknown_fields_in_a_hello_or_challenge_are_skipped() {
+        let hello: Message = serde_json::from_str(r#"{"type":"hello","name":"pc","id":"1","version":3,"later":true}"#).unwrap();
+        assert_eq!(hello, Message::Hello { name: "pc".into(), id: "1".into(), version: 3 });
+        let challenge: Message = serde_json::from_str(r#"{"type":"challenge","nonce":"aa","version":3,"later":[1]}"#).unwrap();
+        assert_eq!(challenge, Message::Challenge { nonce: "aa".into(), version: 3 });
+    }
+
+    /// The old pairing request carried the token in the clear: it is no longer understood.
+    #[test]
+    fn the_old_pair_request_is_not_a_message() {
+        let old = r#"{"type":"pair_request","name":"pc","id":"1","token":"aa","proof":"bb"}"#;
+        assert!(serde_json::from_str::<Message>(old).is_err());
     }
 
     async fn read_raw(bytes: &[u8]) -> std::io::Result<Option<Message>> {

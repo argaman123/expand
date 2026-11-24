@@ -59,15 +59,36 @@ impl HostEngines for FakeHost {
     }
 }
 
+/// What the viewer says when asked whether it is still paired with the Mac.
+#[derive(Clone, Copy)]
+enum Says {
+    Unknown,
+    Paired,
+    NotPaired,
+    Hangs,
+}
+
 struct FakeViewer {
     calls: Calls,
     start_fails: bool,
     close: Arc<Notify>,
     pair_hangs: bool,
+    says: Says,
+    /// The error it puts up (with `close` notified), if any.
+    last_words: Arc<Mutex<Option<String>>>,
 }
 
 #[async_trait]
 impl ViewerEngine for FakeViewer {
+    async fn is_paired(&mut self, host: &str) -> std::io::Result<Option<bool>> {
+        self.calls.lock().unwrap().push(format!("is_paired({host})"));
+        match self.says {
+            Says::Unknown => Ok(None),
+            Says::Paired => Ok(Some(true)),
+            Says::NotPaired => Ok(Some(false)),
+            Says::Hangs => std::future::pending().await,
+        }
+    }
     async fn pair(&mut self, _host: &str, pin: &str) -> std::io::Result<bool> {
         self.calls.lock().unwrap().push(format!("pair({pin})"));
         if self.pair_hangs {
@@ -89,6 +110,9 @@ impl ViewerEngine for FakeViewer {
     async fn stop(&mut self) {
         self.calls.lock().unwrap().push("stop".into());
     }
+    fn last_words(&mut self) -> Option<String> {
+        self.last_words.lock().unwrap().take()
+    }
 }
 
 struct Rig {
@@ -96,6 +120,8 @@ struct Rig {
     viewer_calls: Calls,
     die: Arc<Notify>,
     close: Arc<Notify>,
+    /// What the viewer says as it closes (set before notifying `close`).
+    last_words: Arc<Mutex<Option<String>>>,
     cancel: CancellationToken,
     state: watch::Receiver<State>,
     client: tokio::task::JoinHandle<Peer>,
@@ -110,6 +136,9 @@ fn peer(sunshine_paired: bool) -> Peer {
         token: "a".repeat(64),
         sunshine_paired,
         addresses: Vec::new(),
+        placement: Default::default(),
+        stream: Default::default(),
+        allowed: true,
     }
 }
 
@@ -125,7 +154,13 @@ fn rig_with(
     pin_accepted: bool,
     pair_hangs: bool,
 ) -> Rig {
-    rig_full(host_start, viewer_start_fails, sunshine_paired, pin_accepted, pair_hangs)
+    rig_full(host_start, viewer_start_fails, sunshine_paired, pin_accepted, pair_hangs, Says::Unknown)
+}
+
+/// The PC's records say paired; `says` is what the viewer answers when asked.
+fn rig_says(says: Says, pin_accepted: bool) -> Rig {
+    // A refused PIN leaves Moonlight's pair command waiting, as the real one does.
+    rig_full(HostStart::Ok, false, true, pin_accepted, !pin_accepted, says)
 }
 
 fn rig_full(
@@ -134,6 +169,7 @@ fn rig_full(
     sunshine_paired: bool,
     pin_accepted: bool,
     pair_hangs: bool,
+    says: Says,
 ) -> Rig {
     let (a, b) = tokio::io::duplex(8192);
     let (host_calls, viewer_calls): (Calls, Calls) = Default::default();
@@ -154,7 +190,10 @@ fn rig_full(
         start_fails: viewer_start_fails,
         close: close.clone(),
         pair_hangs,
+        says,
+        last_words: Default::default(),
     };
+    let last_words = fake_viewer.last_words.clone();
     let token = cancel.clone();
     let client = tokio::spawn(async move {
         run_connected(
@@ -170,7 +209,7 @@ fn rig_full(
         .await
     });
 
-    Rig { host_calls, viewer_calls, die, close, cancel, state, client, host }
+    Rig { host_calls, viewer_calls, die, close, last_words, cancel, state, client, host }
 }
 
 async fn wait_for(state: &mut watch::Receiver<State>, want: impl Fn(&State) -> bool) -> State {
@@ -213,6 +252,8 @@ async fn first_run_pairs_sunshine_then_streams() {
     assert_eq!(pin.len(), 4);
     assert!(pin.chars().all(|c| c.is_ascii_digit()));
     assert!(has(&r.host_calls, &format!("pin({pin})")));
+    // Not paired by our own records: pairing anyway, so there is nothing to ask the viewer.
+    assert!(!r.viewer_calls.lock().unwrap().iter().any(|c| c.starts_with("is_paired")));
 
     r.cancel.cancel();
     assert!(r.client.await.unwrap().sunshine_paired);
@@ -267,6 +308,37 @@ async fn viewer_closing_immediately_is_a_failure_and_forces_repairing() {
     assert!(!r.client.await.unwrap().sunshine_paired);
     r.host.await.unwrap();
     assert!(has(&r.host_calls, "stop"));
+}
+
+/// Moonlight putting up an error ends the session with it, whenever it comes; Moonlight goes
+/// with its message, and the pairing is kept.
+#[tokio::test(start_paused = true)]
+async fn an_error_the_viewer_puts_up_is_the_failure() {
+    for after in [Duration::from_secs(1), Duration::from_secs(30)] {
+        let mut r = rig(HostStart::Ok, false, true);
+        wait_for(&mut r.state, |s| *s == State::Connected).await;
+        tokio::time::sleep(after).await;
+        *r.last_words.lock().unwrap() = Some("Failed to connect to the Mac".into());
+        r.close.notify_one();
+        let s = wait_for(&mut r.state, |s| matches!(s, State::Failed { .. })).await;
+        assert_eq!(failed_part(&s), Some(("Moonlight", "Failed to connect to the Mac")));
+        assert!(r.client.await.unwrap().sunshine_paired);
+        r.host.await.unwrap();
+        assert!(has(&r.viewer_calls, "stop"));
+        assert!(has(&r.host_calls, "stop"));
+    }
+}
+
+/// An error that says Moonlight is not paired: it pairs again next time.
+#[tokio::test(start_paused = true)]
+async fn an_error_saying_not_paired_pairs_again_next_time() {
+    let mut r = rig(HostStart::Ok, false, true);
+    wait_for(&mut r.state, |s| *s == State::Connected).await;
+    *r.last_words.lock().unwrap() = Some("Computer Mac has not been paired. Please open Moonlight to pair before streaming.".into());
+    r.close.notify_one();
+    let s = wait_for(&mut r.state, |s| matches!(s, State::Failed { .. })).await;
+    assert_eq!(failed_part(&s).unwrap().0, "Moonlight");
+    assert!(!r.client.await.unwrap().sunshine_paired);
 }
 
 #[tokio::test(start_paused = true)]
@@ -399,20 +471,24 @@ async fn the_mac_learns_which_side_it_sits_on_before_starting() {
 #[tokio::test]
 async fn a_new_pairing_is_saved_as_soon_as_it_is_made() {
     use sidescreen_core::config::Config;
-    use sidescreen_core::link::{server::Server, TrustPrompt};
+    use sidescreen_core::link::{server::Server, PairGate};
 
     struct Allow;
-    #[async_trait]
-    impl TrustPrompt for Allow {
-        async fn ask(&self, _name: &str, _id: &str) -> bool {
-            true
+    impl PairGate for Allow {
+        fn code(&self) -> Option<String> {
+            // The code the PC below pairs with.
+            Some("123456".to_string())
+        }
+
+        fn conclude(&self, _code: &str, proved: bool) -> bool {
+            proved
         }
     }
 
-    let server = Server::bind("127.0.0.1:0".parse().unwrap()).await.unwrap();
+    let mut server = Server::bind("127.0.0.1:0".parse().unwrap()).await.unwrap();
     let addr = server.local_addr();
     tokio::spawn(async move {
-        let (conn, _) = server.accept(|| None, &Allow).await.unwrap();
+        let (conn, _, _) = server.accept(|_: &str| None, Arc::new(Allow), ("MacBook", "macid")).await.unwrap();
         let calls: Calls = Default::default();
         let mut host = FakeHost { calls, start: HostStart::Hang, die: Arc::new(Notify::new()), pin_accepted: true };
         let (state, _) = watch::channel(State::Disconnected);
@@ -421,13 +497,20 @@ async fn a_new_pairing_is_saved_as_soon_as_it_is_made() {
 
     let saved: Arc<Mutex<Option<Peer>>> = Default::default();
     let save = { let saved = saved.clone(); move |p: Peer| *saved.lock().unwrap() = Some(p) };
-    let mut viewer = FakeViewer { calls: Default::default(), start_fails: false, close: Arc::new(Notify::new()), pair_hangs: false };
+    let mut viewer = FakeViewer {
+        calls: Default::default(),
+        start_fails: false,
+        close: Arc::new(Notify::new()),
+        pair_hangs: false,
+        says: Says::Unknown,
+        last_words: Default::default(),
+    };
     let (state, _) = watch::channel(State::Disconnected);
     let cancel = CancellationToken::new();
     let cfg = Config::default_new();
     let session = {
         let cancel = cancel.clone();
-        async move { sidescreen_core::session::client::run(vec![addr], &cfg, &mut viewer, &state, cancel, &save).await }
+        async move { sidescreen_core::session::client::run(vec![addr], &cfg, &mut viewer, &state, cancel, &save, Some("123456")).await }
     };
     let watcher = async {
         // The Mac never gets past starting, so the session is still running here.
@@ -445,4 +528,91 @@ async fn a_new_pairing_is_saved_as_soon_as_it_is_made() {
     let paired = paired.expect("the pairing was not saved while the session was running");
     assert_eq!(paired.token.len(), 64);
     assert_eq!(paired.host, "127.0.0.1");
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_start_from_a_pc_that_may_not_start_is_told_the_mac_is_in_use() {
+    use sidescreen_core::session::host::serve_gated;
+    let (a, b) = tokio::io::duplex(8192);
+    let calls: Calls = Default::default();
+    let host = {
+        let calls = calls.clone();
+        tokio::spawn(async move {
+            let mut fake = FakeHost { calls, start: HostStart::Ok, die: Arc::new(Notify::new()), pin_accepted: true };
+            let (state, _keep) = watch::channel(State::Connected);
+            serve_gated(Connection::new(b), &mut fake, &state, &|_: Side| {}, &|| false).await;
+            // Someone else's display is not this connection's to end.
+            assert_eq!(*state.borrow(), State::Connected);
+        })
+    };
+    let mut pc = Connection::new(a);
+    pc.send(Message::Start { width: 1920, height: 1080, fps: 60 }).await.unwrap();
+    assert_eq!(pc.recv().await.unwrap(), Message::Failed { part: "Mac".into(), reason: "In use".into() });
+    host.await.unwrap();
+    assert!(!calls.lock().unwrap().iter().any(|c| c.starts_with("start(") || c == "stop"), "{:?}", calls.lock().unwrap());
+}
+
+fn position(calls: &Calls, prefix: &str) -> Option<usize> {
+    calls.lock().unwrap().iter().position(|c| c.starts_with(prefix))
+}
+
+// Live check, task 9: the PC's records said paired, Moonlight no longer was, so it opened its own
+// "has not been paired" dialog and the display showed as running. The viewer is asked first now.
+#[tokio::test(start_paused = true)]
+async fn a_viewer_that_is_no_longer_paired_pairs_again_before_streaming() {
+    let mut r = rig_says(Says::NotPaired, true);
+    wait_for(&mut r.state, |s| *s == State::Connected).await;
+    let asked = position(&r.viewer_calls, "is_paired(192.168.1.50)").expect("the viewer was never asked");
+    let paired = position(&r.viewer_calls, "pair(").expect("never paired");
+    let started = position(&r.viewer_calls, "start(").expect("never started");
+    assert!(asked < paired && paired < started, "{:?}", r.viewer_calls.lock().unwrap());
+    let viewer_pin = r.viewer_calls.lock().unwrap()[paired].clone();
+    let pin = viewer_pin.trim_start_matches("pair(").trim_end_matches(')').to_string();
+    assert!(has(&r.host_calls, &format!("pin({pin})")), "the PIN went to the Mac");
+    r.cancel.cancel();
+    assert!(r.client.await.unwrap().sunshine_paired);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_viewer_that_says_it_is_paired_streams_without_pairing() {
+    let mut r = rig_says(Says::Paired, true);
+    wait_for(&mut r.state, |s| *s == State::Connected).await;
+    assert!(has(&r.viewer_calls, "is_paired(192.168.1.50)"));
+    assert!(position(&r.viewer_calls, "pair(").is_none());
+    assert!(!r.host_calls.lock().unwrap().iter().any(|c| c.starts_with("pin(")));
+    r.cancel.cancel();
+    assert!(r.client.await.unwrap().sunshine_paired);
+}
+
+// When the viewer cannot tell, the session goes on as before: straight to streaming.
+#[tokio::test(start_paused = true)]
+async fn a_viewer_that_cannot_tell_streams_as_before() {
+    let mut r = rig_says(Says::Unknown, true);
+    wait_for(&mut r.state, |s| *s == State::Connected).await;
+    assert!(has(&r.viewer_calls, "is_paired(192.168.1.50)"));
+    assert!(position(&r.viewer_calls, "pair(").is_none());
+    r.cancel.cancel();
+    assert!(r.client.await.unwrap().sunshine_paired);
+}
+
+#[tokio::test(start_paused = true)]
+async fn pairing_again_refused_by_the_mac_is_remembered_as_not_paired() {
+    let mut r = rig_says(Says::NotPaired, false);
+    let s = wait_for(&mut r.state, |s| matches!(s, State::Failed { .. })).await;
+    assert_eq!(failed_part(&s).unwrap().0, "Pairing");
+    assert!(!r.client.await.unwrap().sunshine_paired);
+    assert!(position(&r.viewer_calls, "start(").is_none());
+}
+
+#[tokio::test(start_paused = true)]
+async fn cancel_while_asking_the_viewer_tears_down() {
+    let mut r = rig_says(Says::Hangs, true);
+    wait_for(&mut r.state, |s| *s == State::Connecting).await;
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    assert!(has(&r.viewer_calls, "is_paired(192.168.1.50)"));
+    r.cancel.cancel();
+    r.client.await.unwrap();
+    r.host.await.unwrap();
+    assert_eq!(*r.state.borrow(), State::Disconnected);
+    assert!(has(&r.host_calls, "stop"));
 }

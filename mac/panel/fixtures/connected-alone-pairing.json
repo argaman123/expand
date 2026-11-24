@@ -1,0 +1,1 @@
+{"version":"1.1.0","connected":{"key":"home","name":"Windows PC","address":"192.168.1.2","state":"connected","ms":3,"uses":{"mouse":true,"clipboard":true,"display":true},"display":"2560 × 1440 · 60 fps"},"others":[],"pairing":{"code":"482913","seconds_left":121},"permissions":{"screen":true,"accessibility":true},"missing":[],"stay_awake":true,"start_at_login":true}

@@ -1,0 +1,9 @@
+/* Where the Mac's display goes in the display window, while it is not there (Placeholder.tsx):
+   under the 40px title bar, or over the whole window when it is full screen. */
+.ss-ph { position: fixed; inset: 40px 0 0 0; display: grid; place-items: center; background: #161616; user-select: none; cursor: default; }
+.ss-ph.ss-ph-full { inset: 0; z-index: 1; }
+.ss-ph-start { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--colorNeutralForeground2); }
+.ss-ph-fail { display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: min(520px, 80vw); text-align: center; }
+.ss-ph-part { font-size: 14px; font-weight: 600; color: var(--colorNeutralForeground1); }
+.ss-ph-reason { font-size: 13px; color: var(--colorNeutralForeground3); overflow-wrap: anywhere; }
+.ss-ph-acts { display: flex; gap: 8px; margin-top: 10px; }

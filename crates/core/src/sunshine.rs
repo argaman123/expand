@@ -241,6 +241,11 @@ impl Host {
         Ok(body.get("status").and_then(|s| s.as_bool()).unwrap_or(false))
     }
 
+    /// Sunshine's process id while it runs: the events it posts carry it (`keys_stream`).
+    pub fn pid(&self) -> Option<u32> {
+        self.child.id()
+    }
+
     pub async fn wait(&mut self) -> std::io::Result<ExitStatus> {
         self.child.wait().await
     }

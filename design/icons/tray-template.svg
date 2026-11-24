@@ -1,0 +1,11 @@
+<!-- The Mac's menu-bar icon: the split square, its right half solid, and the pointer in solid
+     black with a clear gap round it. A template image (black on transparent; the system tints
+     it). 36 px = 18 pt at 2x, the height the menu bar shows it at; the edges are on whole pixels. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="36" height="36">
+  <defs><mask id="m"><rect width="36" height="36" fill="#fff"/><path d="M12.5 6.5 L12.5 27 L17 23 L20.5 30.5 L24.5 28.75 L21 21 L27.5 21 Z" fill="#000" stroke="#000" stroke-width="4.5" stroke-linejoin="round"/></mask></defs>
+  <g mask="url(#m)">
+    <rect x="3.5" y="3.5" width="29" height="29" rx="7" fill="none" stroke="#000" stroke-width="3"/>
+    <path d="M18 2 H25.5 A8.5 8.5 0 0 1 34 10.5 V25.5 A8.5 8.5 0 0 1 25.5 34 H18 Z"/>
+  </g>
+  <path d="M12.5 6.5 L12.5 27 L17 23 L20.5 30.5 L24.5 28.75 L21 21 L27.5 21 Z" stroke="#000" stroke-width="1" stroke-linejoin="round"/>
+</svg>

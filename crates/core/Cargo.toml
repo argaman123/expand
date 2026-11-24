@@ -25,16 +25,26 @@ input-event = { path = "../../third_party/lan-mouse/input-event", default-featur
 arboard = "3"
 png = "0.17"
 if-addrs = "0.13"
+spake2 = "0.4"
+zeroize = { version = "1", features = ["zeroize_derive"] }
 
 [target.'cfg(windows)'.dependencies]
 input-capture = { path = "../../third_party/lan-mouse/input-capture", default-features = false }
 windows = { version = "0.58", features = [
     "Win32_Foundation",
+    "Win32_Graphics_Dwm",
     "Win32_Graphics_Gdi",
+    "Win32_System_Com",
+    "Win32_System_Diagnostics_ToolHelp",
     "Win32_System_LibraryLoader",
+    "Win32_System_Pipes",
+    "Win32_System_SystemInformation",
     "Win32_System_Threading",
+    "Win32_Security",
+    "Win32_UI_Accessibility",
     "Win32_UI_HiDpi",
     "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Shell",
     "Win32_System_DataExchange",
     "Win32_Globalization",
     "Win32_UI_WindowsAndMessaging",
@@ -43,6 +53,10 @@ windows = { version = "0.58", features = [
 [target.'cfg(target_os = "macos")'.dependencies]
 core-graphics = "0.24"
 core-foundation = "0.10"
+# The stream-keys tap: 0.25 (already in the tree through Lan Mouse's emulation) can drop an
+# event from a tap callback, which 0.24 cannot; and `CGEvent`'s raw pointer, as it uses it.
+core-graphics-25 = { package = "core-graphics", version = "0.25" }
+foreign-types = "0.5"
 input-emulation = { path = "../../third_party/lan-mouse/input-emulation", default-features = false }
 
 [dev-dependencies]

@@ -123,9 +123,45 @@ pub fn picture_area(window: Area, stream: (u32, u32)) -> Area {
     Area { left, top, right: left + pw, bottom: top + ph }
 }
 
+/// Whether the desktop goes in front as the pointer crosses to the Mac, decided by where the
+/// keyboard is. With one of Sidescreen's windows in front (`ours`), keys typed into its own web
+/// views never reach the capture (seen 2026-11-19), so it steps aside, as before the display was
+/// embedded. Except when the keyboard `focus` is on the `embedded_viewer` (the viewer's window
+/// inside the display window; 0 for none): that was another app's window before it was embedded,
+/// which never stepped aside, and stepping aside would drop a full-screen display behind the
+/// taskbar and send the keys typed after the hand-back to the desktop.
+pub fn should_step_aside(ours: bool, focus: isize, embedded_viewer: isize) -> bool {
+    ours && !(embedded_viewer != 0 && focus == embedded_viewer)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const VIEWER: isize = 0x1234;
+    const TITLE_BAR: isize = 0x5678;
+
+    #[test]
+    fn the_keyboard_on_the_embedded_viewer_stays_for_the_mac() {
+        assert!(!should_step_aside(true, VIEWER, VIEWER));
+    }
+
+    #[test]
+    fn the_keyboard_anywhere_else_in_sidescreen_steps_aside() {
+        // The display window's title bar, a menu of the bar over it, the main window.
+        assert!(should_step_aside(true, TITLE_BAR, VIEWER));
+        // Nothing has the keyboard.
+        assert!(should_step_aside(true, 0, VIEWER));
+    }
+
+    #[test]
+    fn with_no_embedded_viewer_it_is_as_before() {
+        assert!(should_step_aside(true, TITLE_BAR, 0));
+        assert!(should_step_aside(true, 0, 0));
+        // Another app in front: left alone, whatever has its keyboard.
+        assert!(!should_step_aside(false, TITLE_BAR, VIEWER));
+        assert!(!should_step_aside(false, VIEWER, VIEWER));
+    }
 
     // Measured on 2026-11-18: the MacBook's screen, the virtual display beside it on the PC's
     // side (points), and the PC's right-hand monitor (pixels).

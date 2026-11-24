@@ -73,6 +73,20 @@ async fn drive(
         peer.addresses = list.into_iter().filter(|a| *a != peer.host).collect();
     }
 
+    // Our records can be out of date (Sunshine's or Moonlight's pairing can be lost), and then the
+    // viewer would show its own "not paired" dialog instead of a stream. Ask it while Sunshine is
+    // up; when it cannot tell, go on as before.
+    if peer.sunshine_paired {
+        let answer = tokio::select! {
+            _ = cancel.cancelled() => return State::Disconnected,
+            a = viewer.is_paired(host) => a,
+            r = wait_for(conn, |_| None::<()>) => return r.err().unwrap_or(State::Disconnected),
+        };
+        if let Ok(Some(false)) = answer {
+            peer.sunshine_paired = false;
+        }
+    }
+
     if !peer.sunshine_paired {
         let pin = format!("{:04}", rand::thread_rng().gen_range(0..10000));
         if let Err(e) = conn.send(Message::SunshinePair { pin: pin.clone() }).await {
@@ -118,7 +132,14 @@ async fn drive(
     tokio::select! {
         _ = cancel.cancelled() => State::Disconnected,
         _ = viewer.closed() => {
-            if viewer_started.elapsed() < VIEWER_MIN_LIFE {
+            if let Some(said) = viewer.last_words() {
+                // Moonlight put up an error: it shows in the display window (with Retry and
+                // Close), and Moonlight goes with its message.
+                if crate::moonlight::says_unpaired(&said) {
+                    peer.sunshine_paired = false;
+                }
+                failed("Moonlight", said)
+            } else if viewer_started.elapsed() < VIEWER_MIN_LIFE {
                 // Most likely Moonlight is no longer paired with this Sunshine: pair again next time.
                 peer.sunshine_paired = false;
                 failed("Moonlight", "the viewer closed right after starting; try again")
@@ -154,7 +175,7 @@ pub async fn run_connected(
     peer
 }
 
-/// Connects to the Mac (pairing if needed) and runs a session.
+/// Connects to the Mac (pairing with `code` if there is no token yet) and runs a session.
 /// Returns the peer to store when anything about it changed.
 ///
 pub async fn run(
@@ -164,6 +185,7 @@ pub async fn run(
     state: &StateTx,
     cancel: CancellationToken,
     save_peer: &(dyn Fn(Peer) + Send + Sync),
+    code: Option<&str>,
 ) -> Option<Peer> {
     state.send_replace(State::Connecting);
     let connected = tokio::select! {
@@ -171,7 +193,7 @@ pub async fn run(
             state.send_replace(State::Disconnected);
             return None;
         }
-        r = link::client::connect_or_pair(&addrs, &cfg.device_name, &cfg.device_id, cfg.peer.as_ref()) => r,
+        r = link::client::connect(&addrs, &cfg.device_name, &cfg.device_id, cfg.current_peer(), code) => r,
     };
     let (conn, new_peer, addr) = match connected {
         Ok(ok) => ok,
@@ -182,16 +204,19 @@ pub async fn run(
     };
     let host = addr.ip().to_string();
     let paired = new_peer.is_some();
-    let peer = match (new_peer, &cfg.peer) {
-        // Re-paired: keep what the user typed and what the Mac reported before.
+    let peer = match (new_peer, cfg.current_peer()) {
+        // Re-paired: the Mac's own name and id win; keep everything the user set before.
         (Some(new), Some(old)) => Peer {
-            name: old.name.clone(),
-            id: old.id.clone(),
+            name: if new.name.is_empty() { old.name.clone() } else { new.name.clone() },
+            id: if new.id.is_empty() { old.id.clone() } else { new.id.clone() },
             host: old.host.clone(),
             addresses: old.addresses.clone(),
+            placement: old.placement,
+            stream: old.stream.clone(),
+            allowed: old.allowed,
             ..new
         },
-        (Some(new), None) => Peer { name: host.clone(), ..new },
+        (Some(new), None) => Peer { name: if new.name.is_empty() { host.clone() } else { new.name.clone() }, ..new },
         (None, Some(old)) => old.clone(),
         (None, None) => unreachable!("connecting without a peer always pairs"),
     };
@@ -199,6 +224,8 @@ pub async fn run(
     if paired {
         save_peer(peer.clone());
     }
-    let after = run_connected(conn, &host, peer, &cfg.stream, cfg.mac_side, viewer, state, cancel).await;
-    (cfg.peer.as_ref() != Some(&after)).then_some(after)
+    let stream = peer.stream.clone();
+    let mac_side = peer.placement.side;
+    let after = run_connected(conn, &host, peer, &stream, mac_side, viewer, state, cancel).await;
+    (cfg.current_peer() != Some(&after)).then_some(after)
 }

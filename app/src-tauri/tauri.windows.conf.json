@@ -1,0 +1,27 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Sidescreen",
+        "width": 1240,
+        "height": 780,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true,
+        "center": true,
+        "decorations": false,
+        "transparent": true,
+        "windowEffects": {
+          "effects": [
+            "mica"
+          ]
+        },
+        "theme": "Dark"
+      }
+    ]
+  },
+  "build": {
+    "beforeBundleCommand": "cargo build -p sidescreen_viewer_hook --release"
+  }
+}

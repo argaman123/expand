@@ -13,6 +13,8 @@ pub mod layout;
 pub mod clipboard;
 pub mod language;
 pub mod sharelog;
+pub mod trace;
 pub mod mouse;
+pub mod keys_stream;
 #[cfg(windows)]
 pub mod winwindow;

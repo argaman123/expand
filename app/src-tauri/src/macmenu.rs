@@ -27,24 +27,27 @@ pub fn host_menu(status: &StatusDto, system: &SystemDto) -> Vec<Line> {
         _ => "Ready".to_string(),
     };
     let mut lines = vec![Line::Text(now)];
-    if status.paired {
-        lines.push(Line::Text(short(&format!("PC: {}", status.peer_name.as_deref().unwrap_or("paired")))));
+    // The Mac has no "current" PC: it names the connected one, or the only one.
+    let paired: Vec<_> = status.peers.iter().filter(|p| p.paired).collect();
+    let named = paired.iter().find(|p| p.connected).or(if paired.len() == 1 { paired.first() } else { None });
+    match (named, paired.len()) {
+        (_, 0) => lines.push(Line::Text("No PC paired yet".into())),
+        (Some(pc), _) => lines.push(Line::Text(short(&format!("PC: {}", pc.name)))),
+        (None, n) => lines.push(Line::Text(format!("{n} PCs paired"))),
+    }
+    // Interim (the menu is replaced in plan 2): only the one PC there is can be forgotten here.
+    if paired.len() == 1 {
         let idle = matches!(status.state, "disconnected" | "failed");
         lines.push(Line::Action { id: "forget", label: "Forget this PC".into(), enabled: idle });
-    } else {
-        lines.push(Line::Text("No PC paired yet".into()));
     }
 
     lines.push(Line::Separator);
-    let sharing = if status.sharing_paused {
-        "Sharing paused"
-    } else if status.mouse_sharing && status.mouse_state == "failed" {
+    let sharing = if status.mouse_sharing && status.mouse_state == "failed" {
         "Sharing isn't working"
     } else {
         "Sharing mouse, keyboard and clipboard"
     };
     lines.push(Line::Text(sharing.into()));
-    lines.push(Line::Check { id: "pause", label: "Pause sharing".into(), checked: status.sharing_paused });
     lines.push(Line::Check { id: "login", label: "Start at login".into(), checked: system.start_at_login });
 
     // Granted permissions need no attention: only a missing one shows as something to do.
@@ -86,7 +89,20 @@ fn short(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::SettingsDto;
+    use crate::state::{PeerDto, SettingsDto};
+
+    fn pc(key: &str, name: &str, connected: bool) -> PeerDto {
+        PeerDto {
+            key: key.into(),
+            name: name.into(),
+            host: "192.168.1.10".into(),
+            addresses: Vec::new(),
+            current: false,
+            allowed: true,
+            paired: true,
+            connected,
+        }
+    }
 
     fn status() -> StatusDto {
         StatusDto {
@@ -97,17 +113,28 @@ mod tests {
             peer_name: Some("DESKTOP-PC".into()),
             peer_host: Some("192.168.1.10".into()),
             paired: true,
-            settings: SettingsDto { width: 2560, height: 1440, fps: 60, bitrate_mbps: 30, window_mode: "windowed".into() },
+            settings: SettingsDto { width: 2560, height: 1440, fps: 60, bitrate_mbps: 30, window_mode: "windowed".into(), monitor: None },
             config_error: None,
             mouse_sharing: true,
             mac_side: "right",
             mouse_state: "running",
             mouse_reason: None,
-            sharing_paused: false,
+            connection: "off",
+            busy_by: None,
+            peers: vec![pc("pc-1", "DESKTOP-PC", false)],
+            auto_connect: true,
+            placement: crate::state::PlacementDto { side: "right", monitor: None },
+            uses: None,
+            pairing: None,
             close_to_tray: true,
             clipboard_sharing: true,
             language_follow: true,
+            start_display_on_connect: false,
+            ctrl_as_cmd: true,
             peer_addresses: Vec::new(),
+            latency_ms: None,
+            viewer_monitor: None,
+            display: None,
         }
     }
 
@@ -133,17 +160,24 @@ mod tests {
         assert_eq!(lines[1], Line::Text("PC: DESKTOP-PC".into()));
     }
 
-    // 2026-11-19: "way too long"; one short switch that stops all sharing.
+    // The Mac no longer has a current PC (final review I6): the menu names the connected one.
     #[test]
-    fn sharing_has_one_short_pause_switch() {
+    fn with_several_pcs_the_menu_names_the_connected_one() {
+        let mut two = status();
+        two.peers.push(pc("pc-2", "LAPTOP", false));
+        let lines = host_menu(&two, &system());
+        assert_eq!(lines[1], Line::Text("2 PCs paired".into()));
+        assert!(!texts(&lines).contains(&"Forget this PC".to_string()));
+        two.peers[1].connected = true;
+        assert_eq!(host_menu(&two, &system())[1], Line::Text("PC: LAPTOP".into()));
+    }
+
+    // 2026-11-19: "way too long"; one short line says what is shared.
+    #[test]
+    fn sharing_has_one_short_line() {
         let lines = host_menu(&status(), &system());
         assert!(lines.contains(&Line::Text("Sharing mouse, keyboard and clipboard".into())));
-        assert!(lines.contains(&Line::Check { id: "pause", label: "Pause sharing".into(), checked: false }));
-        let mut paused = status();
-        paused.sharing_paused = true;
-        let lines = host_menu(&paused, &system());
-        assert!(lines.contains(&Line::Text("Sharing paused".into())));
-        assert!(lines.contains(&Line::Check { id: "pause", label: "Pause sharing".into(), checked: true }));
+        assert!(!lines.iter().any(|l| matches!(l, Line::Check { id: "pause", .. })));
     }
 
     #[test]
@@ -185,6 +219,7 @@ mod tests {
         alone.paired = false;
         alone.peer_name = None;
         alone.peer_host = None;
+        alone.peers.clear();
         let lines = host_menu(&alone, &system());
         assert_eq!(lines[1], Line::Text("No PC paired yet".into()));
         assert!(!texts(&lines).contains(&"Forget this PC".to_string()));

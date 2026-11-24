@@ -1,6 +1,6 @@
 [package]
 name = "sidescreen-app"
-version = "0.1.0"
+version = "1.1.0"
 description = "Use a PC monitor as an extra display for a Mac"
 edition = "2021"
 
@@ -21,6 +21,17 @@ tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
 async-trait = "0.1"
 tauri-plugin-autostart = "2"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 
 [dev-dependencies]
 tempfile = "3"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.10"
+
+[target.'cfg(windows)'.dependencies]
+# The tray asks for the small-icon size.
+windows = { version = "0.58", features = ["Win32_UI_WindowsAndMessaging"] }
+# The PC's in-place updater (the Mac opens the release page). Only v2 artifacts (a signed
+# setup.exe), so no zip support.
+tauri-plugin-updater = { version = "2.14.1", default-features = false, features = ["rustls-tls"] }

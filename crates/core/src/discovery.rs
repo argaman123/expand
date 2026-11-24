@@ -13,6 +13,8 @@ pub struct Found {
     pub id: String,
     pub host: String,
     pub port: u16,
+    /// The Mac is showing its pairing code right now.
+    pub pairing: bool,
 }
 
 #[derive(Debug)]
@@ -39,11 +41,14 @@ impl Drop for Advertisement {
     }
 }
 
-pub fn advertise(name: &str, id: &str, port: u16) -> Result<Advertisement, DiscoveryError> {
+/// Announces this Mac. `pairing` says whether it is showing its pairing code; to change that,
+/// drop the advertisement and make a new one.
+pub fn advertise(name: &str, id: &str, port: u16, pairing: bool) -> Result<Advertisement, DiscoveryError> {
     let err = |e: mdns_sd::Error| DiscoveryError(e.to_string());
     let daemon = ServiceDaemon::new().map_err(err)?;
     let host = format!("sidescreen-{id}.local.");
-    let info = ServiceInfo::new(SERVICE, name, &host, "", port, &[("id", id)][..])
+    let properties = [("id", id), ("pairing", if pairing { "1" } else { "0" })];
+    let info = ServiceInfo::new(SERVICE, name, &host, "", port, &properties[..])
         .map_err(err)?
         .enable_addr_auto();
     let fullname = info.get_fullname().to_string();
@@ -61,6 +66,21 @@ fn usable_address<'a>(mut addrs: impl Iterator<Item = &'a IpAddr>) -> Option<IpA
     addrs.find(|a| a.is_ipv4()).copied()
 }
 
+/// What a resolved answer says about the computer, or `None` while it has no IPv4 address (a
+/// later answer carries it once it is known).
+fn found_from(info: &ServiceInfo, service: &str) -> Option<Found> {
+    let addr = usable_address(info.get_addresses().iter())?;
+    let suffix = format!(".{service}");
+    let name = info.get_fullname().strip_suffix(&suffix).unwrap_or(info.get_fullname());
+    Some(Found {
+        name: name.to_string(),
+        id: info.get_property_val_str("id").unwrap_or_default().to_string(),
+        host: addr.to_string(),
+        port: info.get_port(),
+        pairing: info.get_property_val_str("pairing") == Some("1"),
+    })
+}
+
 /// Browses for `service` and returns the first instance that resolves with an IPv4 address.
 pub async fn find_first_of(service: &str, timeout: Duration) -> Option<Found> {
     let daemon = ServiceDaemon::new().ok()?;
@@ -69,18 +89,9 @@ pub async fn find_first_of(service: &str, timeout: Duration) -> Option<Found> {
         loop {
             match events.recv_async().await {
                 Ok(ServiceEvent::ServiceResolved(info)) => {
-                    // An answer without an IPv4 address is followed by another once it is known.
-                    let Some(addr) = usable_address(info.get_addresses().iter()) else {
-                        continue;
-                    };
-                    let suffix = format!(".{service}");
-                    let name = info.get_fullname().strip_suffix(&suffix).unwrap_or(info.get_fullname());
-                    return Some(Found {
-                        name: name.to_string(),
-                        id: info.get_property_val_str("id").unwrap_or_default().to_string(),
-                        host: addr.to_string(),
-                        port: info.get_port(),
-                    });
+                    if let Some(found) = found_from(&info, service) {
+                        return Some(found);
+                    }
                 }
                 Ok(_) => continue,
                 Err(_) => return None,
@@ -92,6 +103,36 @@ pub async fn find_first_of(service: &str, timeout: Duration) -> Option<Found> {
     found
 }
 
+/// Every Sidescreen Mac that answers within `timeout`, once each (by id; the latest answer wins,
+/// so a Mac that opened its pairing mode meanwhile shows it).
+pub async fn find_all(timeout: Duration) -> Vec<Found> {
+    let Ok(daemon) = ServiceDaemon::new() else { return Vec::new() };
+    let Ok(events) = daemon.browse(SERVICE) else { return Vec::new() };
+    let mut all: Vec<Found> = Vec::new();
+    let collect = async {
+        while let Ok(event) = events.recv_async().await {
+            if let ServiceEvent::ServiceResolved(info) = event {
+                if let Some(found) = found_from(&info, SERVICE) {
+                    remember(&mut all, found);
+                }
+            }
+        }
+    };
+    let _ = tokio::time::timeout(timeout, collect).await;
+    let _ = daemon.shutdown();
+    all
+}
+
+/// Adds an answer to the list, replacing the one from the same computer (same id, or, without an
+/// id, same address).
+fn remember(all: &mut Vec<Found>, found: Found) {
+    let same = |f: &Found| if found.id.is_empty() { f.id.is_empty() && f.host == found.host } else { f.id == found.id };
+    match all.iter_mut().find(|f| same(f)) {
+        Some(old) => *old = found,
+        None => all.push(found),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -100,11 +141,12 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn advertise_then_find_on_same_machine() {
-        let _ad = advertise("test-mac", "abc", 47800).unwrap();
+        let _ad = advertise("test-mac", "abc", 47800, true).unwrap();
         let found = find_first(Duration::from_secs(3)).await.expect("service not found");
         assert_eq!(found.id, "abc");
         assert_eq!(found.name, "test-mac");
         assert_eq!(found.port, 47800);
+        assert!(found.pairing);
         assert!(found.host.parse::<std::net::IpAddr>().is_ok(), "host was {}", found.host);
     }
 
@@ -126,5 +168,30 @@ mod tests {
     async fn nothing_advertised_gives_none() {
         // A service type nobody advertises.
         assert!(find_first_of("_sidescreen-none._tcp.local.", Duration::from_millis(300)).await.is_none());
+    }
+
+    fn answer(properties: &[(&str, &str)]) -> ServiceInfo {
+        ServiceInfo::new(SERVICE, "test-mac", "sidescreen-abc.local.", "192.168.1.50", 47800, properties).unwrap()
+    }
+
+    #[test]
+    fn found_entries_report_pairing_mode() {
+        let open = found_from(&answer(&[("id", "abc"), ("pairing", "1")]), SERVICE).unwrap();
+        assert!(open.pairing);
+        assert_eq!((open.name.as_str(), open.id.as_str(), open.host.as_str(), open.port), ("test-mac", "abc", "192.168.1.50", 47800));
+        assert!(!found_from(&answer(&[("id", "abc"), ("pairing", "0")]), SERVICE).unwrap().pairing);
+        // A Mac from before pairing mode existed does not say.
+        assert!(!found_from(&answer(&[("id", "abc")]), SERVICE).unwrap().pairing);
+    }
+
+    #[test]
+    fn one_computer_is_listed_once_with_its_latest_answer() {
+        let found = |id: &str, host: &str, pairing| Found { name: "m".into(), id: id.into(), host: host.into(), port: 1, pairing };
+        let mut all = Vec::new();
+        remember(&mut all, found("a", "10.0.0.1", false));
+        remember(&mut all, found("b", "10.0.0.2", false));
+        remember(&mut all, found("a", "10.0.0.3", true));
+        assert_eq!(all.len(), 2);
+        assert!(all.iter().any(|f| f.id == "a" && f.pairing && f.host == "10.0.0.3"));
     }
 }

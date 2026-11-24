@@ -8,8 +8,70 @@ use tokio_util::sync::CancellationToken;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MouseStatus {
     Off,
-    Running,
-    Failed(String),
+    /// Reaching the Mac for the first time in this run.
+    Connecting,
+    /// On the PC `mac_*` name the Mac; on the Mac they name the connected PC. Mac side only:
+    /// `uses` is what the PC said it is using the Mac for, `problem` why its mouse and keyboard
+    /// cannot be replayed although it is connected (the Accessibility permission is missing), and
+    /// `from` the address the PC connected from.
+    Connected {
+        mac_id: String,
+        mac_name: String,
+        uses: Option<Uses>,
+        problem: Option<String>,
+        from: Option<std::net::IpAddr>,
+        /// The smoothed round trip between the two, in ms, once measured: measured on the PC,
+        /// and on the Mac as the PC reports it.
+        rtt_ms: Option<u32>,
+    },
+    /// The network was lost; retrying.
+    Lost(String),
+    Ended(EndReason),
+}
+
+/// What the connected PC is using the Mac for.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Uses {
+    pub mouse: bool,
+    pub clipboard: bool,
+    pub display: bool,
+    /// The PC's Ctrl as ⌘ setting, for typing into the display window (`keys_stream`). It
+    /// changes nothing about the pace.
+    pub ctrl_as_cmd: bool,
+}
+
+/// Why a run ended for good (no retry).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EndReason {
+    ByMac,
+    Busy { by: String },
+    Blocked,
+    Unknown,
+    /// The other computer runs a version of Sidescreen this one cannot work with.
+    Version,
+}
+
+/// What is shared right now on a live connection. Changing it never restarts the connection;
+/// the running side reacts to the change.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Toggles {
+    pub mouse: bool,
+    pub clipboard: bool,
+    pub language: bool,
+    /// Whether the display is in use; reported to the Mac (`Uses`).
+    pub display: bool,
+    /// The PC's Ctrl keys reach the Mac as Command, and its Windows keys as Control
+    /// (`share::keys`).
+    pub ctrl_as_cmd: bool,
+}
+
+/// What a running PC connection follows without reconnecting: what is shared, where the Mac
+/// sits, and the stream's size (to find the picture inside the viewer window).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Live {
+    pub toggles: Toggles,
+    pub placement: crate::config::Placement,
+    pub stream: (u32, u32),
 }
 
 /// What this machine does in mouse sharing.
@@ -23,12 +85,14 @@ pub enum MouseRole {
 
 pub struct MouseManager {
     status: watch::Sender<MouseStatus>,
+    #[cfg_attr(not(windows), allow(dead_code))]
+    live: watch::Sender<Live>,
     running: Option<(MouseRole, CancellationToken, JoinHandle<()>)>,
 }
 
 impl Default for MouseManager {
     fn default() -> Self {
-        MouseManager { status: watch::channel(MouseStatus::Off).0, running: None }
+        MouseManager { status: watch::channel(MouseStatus::Off).0, live: watch::channel(Live::default()).0, running: None }
     }
 }
 
@@ -45,8 +109,14 @@ impl MouseManager {
         self.status.subscribe()
     }
 
-    /// Runs sharing in this role. Does nothing if it is already running in the same one.
+    /// Runs sharing in this role. A role with the same identity that is already running is not
+    /// restarted: what it follows live (toggles, placement, stream size) is pushed to it.
     pub async fn start(&mut self, role: MouseRole) {
+        #[cfg(windows)]
+        {
+            let MouseRole::Pc(settings) = &role;
+            self.live.send_replace(settings.live());
+        }
         if self.running.as_ref().is_some_and(|(current, _, task)| *current == role && !task.is_finished()) {
             return;
         }
@@ -56,16 +126,20 @@ impl MouseManager {
         // Lan Mouse's capture and emulation must stay on one thread, so sharing gets its own.
         let (done_tx, done_rx) = tokio::sync::oneshot::channel::<()>();
         let worker = role.clone();
+        #[cfg(windows)]
+        let live = self.live.subscribe();
         std::thread::spawn(move || {
             let guard_status = status.clone();
             let guard_cancel = stop.clone();
             run_guarded(
                 move || {
                     let (worker, status, stop) = (worker.clone(), status.clone(), stop.clone());
+                    #[cfg(windows)]
+                    let live = live.clone();
                     async move {
                         match worker {
                             #[cfg(windows)]
-                            MouseRole::Pc(settings) => crate::share::pc::run(settings, status, stop).await,
+                            MouseRole::Pc(settings) => crate::share::pc::run(settings, live, status, stop).await,
                             #[cfg(target_os = "macos")]
                             MouseRole::Mac(settings) => crate::share::mac::run(settings, status, stop).await,
                         }
@@ -91,11 +165,35 @@ impl MouseManager {
     }
 }
 
-/// How long to wait before starting sharing again after it stopped by itself.
+/// Something taken out of a shared slot for a run, put back when the run ends however it ends
+/// (a crash included), so the next run finds it there.
+pub struct Lent<'a, T> {
+    home: &'a std::sync::Mutex<Option<T>>,
+    item: Option<T>,
+}
+
+impl<'a, T> Lent<'a, T> {
+    pub fn take(home: &'a std::sync::Mutex<Option<T>>) -> Lent<'a, T> {
+        let item = home.lock().unwrap_or_else(|e| e.into_inner()).take();
+        Lent { home, item }
+    }
+
+    pub fn item(&mut self) -> &mut Option<T> {
+        &mut self.item
+    }
+}
+
+impl<T> Drop for Lent<'_, T> {
+    fn drop(&mut self) {
+        *self.home.lock().unwrap_or_else(|e| e.into_inner()) = self.item.take();
+    }
+}
+
+/// How long to wait before starting sharing again after a crash.
 const RESTART_PAUSE: std::time::Duration = std::time::Duration::from_secs(3);
 
-/// Runs sharing on this thread until cancelled, starting it again if it stops by itself or
-/// crashes (a crash is reported, not silent). Runs inside a `LocalSet`, which Lan Mouse's code
+/// Runs sharing on this thread until cancelled, starting it again only after a crash
+/// (reported, not silent); a run that returns normally has ended for good. Runs inside a `LocalSet`, which Lan Mouse's code
 /// needs for the tasks it starts.
 fn run_guarded<F, Fut>(make: F, status: &watch::Sender<MouseStatus>, cancel: &CancellationToken)
 where
@@ -125,15 +223,16 @@ fn run_guarded_with_pause<F, Fut>(
         if cancel.is_cancelled() {
             return;
         }
-        if let Err(payload) = outcome {
+        {
+            let Err(payload) = outcome else { return };
             let what = payload
                 .downcast_ref::<&str>()
                 .map(|s| s.to_string())
                 .or_else(|| payload.downcast_ref::<String>().cloned())
                 .unwrap_or_else(|| "unknown error".to_string());
-            status.send_replace(MouseStatus::Failed(format!("mouse sharing crashed ({what}); starting it again")));
+            status.send_replace(MouseStatus::Lost(format!("mouse sharing crashed ({what}); starting it again")));
         }
-        // Stopped by itself (a problem it has already reported) or crashed: try again shortly.
+        // Crashed: try again shortly.
         let until = std::time::Instant::now() + pause;
         while std::time::Instant::now() < until {
             if cancel.is_cancelled() {
@@ -160,14 +259,14 @@ mod tests {
                 let (status, stop) = (status.clone(), stop.clone());
                 async move {
                     tokio::task::spawn_local(async {}).await.unwrap();
-                    status.send_replace(MouseStatus::Running);
+                    status.send_replace(MouseStatus::Connecting);
                     stop.cancel();
                 }
             },
             &watch::channel(MouseStatus::Off).0,
             &cancel,
         );
-        assert_eq!(*rx.borrow(), MouseStatus::Running);
+        assert_eq!(*rx.borrow(), MouseStatus::Connecting);
     }
 
     #[test]
@@ -196,9 +295,43 @@ mod tests {
         assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 2, "restarted once");
         let reported = seen.lock().unwrap().clone();
         match reported {
-            Some(MouseStatus::Failed(reason)) => assert!(reason.contains("boom"), "{reason}"),
+            Some(MouseStatus::Lost(reason)) => assert!(reason.contains("boom"), "{reason}"),
             other => panic!("the crash was not reported: {other:?}"),
         }
+    }
+
+    #[test]
+    fn a_run_that_returns_normally_is_not_started_again() {
+        let cancel = CancellationToken::new();
+        let runs = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
+        let counter = runs.clone();
+        run_guarded_with_pause(
+            move || {
+                let counter = counter.clone();
+                async move {
+                    counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                }
+            },
+            &watch::channel(MouseStatus::Off).0,
+            &cancel,
+            std::time::Duration::from_millis(10),
+        );
+        assert_eq!(runs.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
+
+    // Final review (ledger minor): the Mac's command receiver was lost when sharing crashed, so
+    // Disconnect stopped working until the app restarted.
+    #[test]
+    fn what_a_run_borrowed_is_put_back_even_after_a_crash() {
+        let home = std::sync::Mutex::new(Some(7));
+        let crashed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let mut lent = Lent::take(&home);
+            assert_eq!(*lent.item(), Some(7));
+            assert_eq!(*home.lock().unwrap(), None, "taken while running");
+            panic!("boom");
+        }));
+        assert!(crashed.is_err());
+        assert_eq!(*home.lock().unwrap(), Some(7));
     }
 
     #[tokio::test]

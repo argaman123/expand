@@ -1,10 +1,15 @@
 //! Headless end-to-end check, without the app window.
 //!   Mac:  e2e host                (run from a Terminal window so it has Screen Recording permission)
 //!   PC:   e2e client <mac-ip> [seconds-to-stay-connected]
-//! The host accepts pairing without asking, so only run it for testing.
+//! The host pairs with a fixed code, so only run it for testing.
+//! It reads and writes the settings file named by `SIDESCREEN_CONFIG`, and refuses to run without
+//! one, so it never changes the app's own settings.
 
 use sidescreen_core::config::Config;
 use sidescreen_core::session::State;
+
+/// The pairing code both sides use in this test tool.
+const CODE: &str = "000000";
 
 fn load() -> (Config, std::path::PathBuf) {
     let path = Config::default_path();
@@ -13,6 +18,11 @@ fn load() -> (Config, std::path::PathBuf) {
 
 #[tokio::main]
 async fn main() {
+    if std::env::var_os("SIDESCREEN_CONFIG").filter(|p| !p.is_empty()).is_none() {
+        eprintln!("e2e: set SIDESCREEN_CONFIG to a settings file for this test, for example in a temporary folder.");
+        eprintln!("Without it, e2e would change the app's own settings and pairings.");
+        std::process::exit(2);
+    }
     let args: Vec<String> = std::env::args().collect();
     match args.get(1).map(String::as_str) {
         Some("client") => client(&args[2], args.get(3).and_then(|s| s.parse().ok()).unwrap_or(20)).await,
@@ -29,7 +39,7 @@ async fn client(ip: &str, seconds: u64) {
 
     let (mut cfg, path) = load();
     let addr: std::net::SocketAddr = format!("{ip}:{CONTROL_PORT}").parse().expect("address");
-    let mut viewer = RealViewer::new(cfg.mac_side).expect("Moonlight");
+    let mut viewer = RealViewer::new(cfg.current_peer().map(|p| p.placement).unwrap_or_default(), cfg.current_peer().and_then(|p| p.stream.monitor)).expect("Moonlight");
     let (tx, mut rx) = tokio::sync::watch::channel(State::Disconnected);
     let cancel = CancellationToken::new();
 
@@ -47,9 +57,9 @@ async fn client(ip: &str, seconds: u64) {
         timer.cancel();
     });
 
-    if let Some(peer) = run(vec![addr], &cfg, &mut viewer, &tx, cancel, &|_| {}).await {
+    if let Some(peer) = run(vec![addr], &cfg, &mut viewer, &tx, cancel, &|_| {}, Some(CODE)).await {
         println!("saving peer (sunshine_paired = {})", peer.sunshine_paired);
-        cfg.peer = Some(peer);
+        cfg.current = Some(cfg.upsert_peer(peer));
         cfg.save(&path).expect("save settings");
     }
     drop(tx);
@@ -58,34 +68,46 @@ async fn client(ip: &str, seconds: u64) {
 
 #[cfg(target_os = "macos")]
 async fn host() {
-    use async_trait::async_trait;
-    use sidescreen_core::link::{server::Server, TrustPrompt, CONTROL_PORT};
+    use sidescreen_core::link::{server::Server, PairGate, CONTROL_PORT};
     use sidescreen_core::session::{engines::RealHostEngines, host::serve};
 
     struct AcceptAll;
-    #[async_trait]
-    impl TrustPrompt for AcceptAll {
-        async fn ask(&self, name: &str, _id: &str) -> bool {
-            println!("auto-accepting pairing from {name}");
-            true
+    impl PairGate for AcceptAll {
+        fn code(&self) -> Option<String> {
+            Some(CODE.to_string())
+        }
+
+        fn conclude(&self, _code: &str, proved: bool) -> bool {
+            println!("pairing: {}", if proved { "accepted" } else { "wrong code" });
+            proved
         }
     }
 
     let (mut cfg, path) = load();
     cfg.save(&path).expect("save settings");
     let data_dir = path.parent().unwrap().join("sunshine");
-    let server = Server::bind(format!("0.0.0.0:{CONTROL_PORT}").parse().unwrap()).await.expect("bind");
+    let mut server = Server::bind(format!("0.0.0.0:{CONTROL_PORT}").parse().unwrap()).await.expect("bind");
+    let gate: std::sync::Arc<dyn PairGate> = std::sync::Arc::new(AcceptAll);
     println!("listening on {}", server.local_addr());
     loop {
-        match server.accept(|| cfg.peer.clone(), &AcceptAll).await {
-            Ok((conn, new_peer)) => {
+        let known = cfg.clone();
+        let accepted = server
+            .accept(move |id| known.peer(id).filter(|p| p.allowed).cloned(), gate.clone(), (&cfg.device_name, &cfg.device_id))
+            .await;
+        match accepted {
+            Ok((conn, new_peer, _)) => {
                 if let Some(peer) = new_peer {
-                    cfg.peer = Some(peer);
+                    cfg.current = Some(cfg.upsert_peer(peer));
                     cfg.save(&path).expect("save settings");
                 }
                 println!("client connected");
-                let mut engines =
-                    RealHostEngines::new(data_dir.clone(), cfg.sunshine_user.clone(), cfg.sunshine_pass.clone());
+                let toward_pc = cfg.current_peer().map(|p| p.placement.side.opposite()).unwrap_or(sidescreen_core::side::Side::Right);
+                let mut engines = RealHostEngines::new(
+                    data_dir.clone(),
+                    cfg.sunshine_user.clone(),
+                    cfg.sunshine_pass.clone(),
+                    move || toward_pc,
+                );
                 let (tx, _rx) = tokio::sync::watch::channel(State::Disconnected);
                 serve(conn, &mut engines, &tx, &|_| {}).await;
                 println!("session ended");

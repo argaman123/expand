@@ -1,0 +1,22 @@
+<!-- Option 3, "Cross the edge": the tile split down the middle, the PC's graphite on the left and
+     the Mac's colour on the right, with the pointer passing over the seam. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <filter id="drop" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="10" stdDeviation="13" flood-color="#000" flood-opacity=".35"/></filter>
+    <linearGradient id="left" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c2d35"/><stop offset="1" stop-color="#141519"/></linearGradient>
+    <linearGradient id="right" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3d8bff"/><stop offset=".55" stop-color="#6a4bd8"/><stop offset="1" stop-color="#b04ad0"/></linearGradient>
+    <linearGradient id="seam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="blur" x="-200%" y="-10%" width="500%" height="120%"><feGaussianBlur stdDeviation="14"/></filter>
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000" flood-opacity=".45"/></filter>
+    <clipPath id="sq"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="#000" filter="url(#drop)"/>
+  <g clip-path="url(#sq)">
+    <rect x="100" y="100" width="412" height="824" fill="url(#left)"/>
+    <rect x="512" y="100" width="412" height="824" fill="url(#right)"/>
+    <rect x="500" y="100" width="24" height="824" fill="url(#seam)" filter="url(#blur)"/>
+    <rect x="508" y="100" width="8" height="824" fill="url(#seam)"/>
+  </g>
+  <path d="M398 268 L398 704 L506 600 L578 768 L662 732 L590 566 L742 562 Z" fill="#fff" stroke="#111217" stroke-width="22" stroke-linejoin="round" filter="url(#lift)"/>
+  <rect x="102" y="102" width="820" height="820" rx="183" fill="none" stroke="#fff" stroke-opacity=".1" stroke-width="4"/>
+</svg>

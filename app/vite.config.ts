@@ -1,14 +1,17 @@
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 // @ts-expect-error type error without @types/node package
 import process from "node:process";
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
-  // Two pages: the main window and the top bar over the full-screen viewer.
+  plugins: [react()],
+  // Three pages: the main window, the top bar over the full-screen viewer, and the display
+  // window around the Mac's display.
   build: {
     rollupOptions: {
-      input: { main: "index.html", bar: "bar.html" },
+      input: { main: "index.html", bar: "bar.html", display: "display.html" },
     },
   },
 

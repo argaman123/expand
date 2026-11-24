@@ -1,0 +1,34 @@
+<!-- Sidescreen's app icon, "Cross the edge": the tile split down the middle, the PC's graphite on
+     the left and the Mac's colour (the brand's "Shore", sky blue into violet) on the right, with the pointer passing over the seam.
+     On Apple's 1024 grid (an 824 tile, 100 margin). The shadows are blur + offset + flood rather
+     than feDropShadow so that every SVG renderer (librsvg included) draws them.
+     scripts/render-icons.sh makes the app's icon files from it. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <filter id="drop" x="-10%" y="-10%" width="120%" height="125%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="13"/><feOffset dy="10" result="s"/>
+      <feFlood flood-color="#000" flood-opacity=".35"/><feComposite in2="s" operator="in"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="left" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c2d35"/><stop offset="1" stop-color="#141519"/></linearGradient>
+    <!-- The brand gradient with its ends pulled apart, so it reads small (app/src/brand.ts ICON_STOPS). -->
+    <linearGradient id="right" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6fcbff"/><stop offset=".5" stop-color="#5d8bff"/><stop offset="1" stop-color="#6f3ae8"/></linearGradient>
+    <linearGradient id="seam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="blur" x="-200%" y="-10%" width="500%" height="120%"><feGaussianBlur stdDeviation="14"/></filter>
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="170%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="18"/><feOffset dy="16" result="s"/>
+      <feFlood flood-color="#000" flood-opacity=".45"/><feComposite in2="s" operator="in"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="sq"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="#000" filter="url(#drop)"/>
+  <g clip-path="url(#sq)">
+    <rect x="100" y="100" width="412" height="824" fill="url(#left)"/>
+    <rect x="512" y="100" width="412" height="824" fill="url(#right)"/>
+    <rect x="500" y="100" width="24" height="824" fill="url(#seam)" filter="url(#blur)"/>
+    <rect x="508" y="100" width="8" height="824" fill="url(#seam)"/>
+  </g>
+  <path d="M398 268 L398 704 L506 600 L578 768 L662 732 L590 566 L742 562 Z" fill="#fff" stroke="#111217" stroke-width="22" stroke-linejoin="round" filter="url(#lift)"/>
+  <rect x="102" y="102" width="820" height="820" rx="183" fill="none" stroke="#fff" stroke-opacity=".1" stroke-width="4"/>
+</svg>
