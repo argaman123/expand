@@ -420,7 +420,7 @@ impl Concealer {
     fn start_with(pid: u32, talkers: Talkers, tell: Option<Box<dyn Fn(Heard) + Send>>, in_context: bool) -> Concealer {
         let (tx, rx) = std::sync::mpsc::channel();
         let handle = std::thread::Builder::new()
-            .name("sidescreen-conceal-viewer".into())
+            .name("expand-conceal-viewer".into())
             .spawn(move || {
                 let tell = tell.map(|f| Box::new(move |h| f(h)) as Box<dyn Fn(Heard)>);
                 WATCH.with(|w| {
@@ -701,7 +701,7 @@ fn conceal(pid: u32, ready: std::sync::mpsc::Sender<u32>, in_context: bool) {
     crate::trace::line(|| format!("viewer {pid} no longer watched"));
 }
 
-/// The library with the in-context hook (`sidescreen_viewer_hook.dll`, beside this program) and
+/// The library with the in-context hook (`expand_viewer_hook.dll`, beside this program) and
 /// its hook, once loaded (tried again each time until it is); `None` when it can't be (the
 /// out-of-context hook then does it all, a moment late). The trace says why.
 fn viewer_hook_library() -> Option<(isize, usize)> {
@@ -720,7 +720,7 @@ fn load_viewer_hook() -> Result<(isize, usize), String> {
     use windows::core::{s, HSTRING};
     use windows::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryW};
     let exe = std::env::current_exe().map_err(|e| format!("no path for this program: {e}"))?;
-    let path = exe.with_file_name("sidescreen_viewer_hook.dll");
+    let path = exe.with_file_name("expand_viewer_hook.dll");
     // Loaded straight away (no check first): the error says what is wrong (2 or 126 not there or
     // a library it needs missing, 5 no access, 193 another machine's), with what this process
     // sees of the file.
@@ -732,8 +732,8 @@ fn load_viewer_hook() -> Result<(isize, usize), String> {
             };
             format!("{} won't load: error {} ({}); {seen}", path.display(), e.code().0 & 0xFFFF, e.message())
         })?;
-        let hook = GetProcAddress(module, s!("sidescreen_viewer_event"))
-            .ok_or_else(|| format!("{} has no sidescreen_viewer_event: {:?}", path.display(), windows::Win32::Foundation::GetLastError()))?;
+        let hook = GetProcAddress(module, s!("expand_viewer_event"))
+            .ok_or_else(|| format!("{} has no expand_viewer_event: {:?}", path.display(), windows::Win32::Foundation::GetLastError()))?;
         crate::trace::line(|| format!("viewer hook library: {} loaded", path.display()));
         Ok((module.0 as isize, hook as usize))
     }
@@ -753,7 +753,7 @@ fn in_context_hooks(pid: u32) -> Vec<windows::Win32::UI::Accessibility::HWINEVEN
     }
     let Some((module, hook)) = viewer_hook_library() else { return Vec::new() };
     let module = HMODULE(module as *mut core::ffi::c_void);
-    // The library's `sidescreen_viewer_event` is a `WINEVENTPROC`.
+    // The library's `expand_viewer_event` is a `WINEVENTPROC`.
     let proc: WINEVENTPROC = unsafe { std::mem::transmute::<usize, WINEVENTPROC>(hook) };
     let hooks: Vec<_> = [EVENT_OBJECT_CREATE, EVENT_OBJECT_SHOW, EVENT_OBJECT_LOCATIONCHANGE]
         .into_iter()
@@ -1067,7 +1067,7 @@ pub fn place_child(child: isize, r: Area) {
     static PLACER: std::sync::OnceLock<Sender<(isize, Area)>> = std::sync::OnceLock::new();
     let placer = PLACER.get_or_init(|| {
         let (tx, rx) = channel::<(isize, Area)>();
-        let _ = std::thread::Builder::new().name("sidescreen-place-viewer".into()).spawn(move || {
+        let _ = std::thread::Builder::new().name("expand-place-viewer".into()).spawn(move || {
             while let Ok(first) = rx.recv() {
                 let mut latest = vec![first];
                 while let Ok((child, r)) = rx.try_recv() {
@@ -1222,7 +1222,7 @@ fn ask_keyboard_thread(child: isize, ask: Ask, wanted: Box<dyn Fn() -> bool + Se
     static KEYBOARD: std::sync::OnceLock<Sender<Request>> = std::sync::OnceLock::new();
     let keyboard = KEYBOARD.get_or_init(|| {
         let (tx, rx) = channel::<Request>();
-        let _ = std::thread::Builder::new().name("sidescreen-focus-viewer".into()).spawn(move || {
+        let _ = std::thread::Builder::new().name("expand-focus-viewer".into()).spawn(move || {
             // AttachThreadInput needs a message queue on this thread.
             let mut msg = windows::Win32::UI::WindowsAndMessaging::MSG::default();
             unsafe {
@@ -1248,7 +1248,7 @@ fn ask_keyboard_thread(child: isize, ask: Ask, wanted: Box<dyn Fn() -> bool + Se
                             }
                             if foreground_window() != root && !bring_forward(root) {
                                 eprintln!(
-                                    "sidescreen: Windows refused the display window the front (in front: {})",
+                                    "expand: Windows refused the display window the front (in front: {})",
                                     describe(foreground_window())
                                 );
                                 continue;
@@ -1512,7 +1512,7 @@ pub fn plain_overlay(window: isize) {
 }
 
 /// Windows never paints a frame on `window`: as it became the window in front (the bar taking the
-/// keyboard for a menu), Windows drew a whole white title bar ("Sidescreen bar", with its
+/// keyboard for a menu), Windows drew a whole white title bar ("Expand bar", with its
 /// buttons) over it for a moment, seen live as a white bar behind the bar (round 4). Activation
 /// itself goes on as before. Must be called on `window`'s thread (subclassing).
 pub fn no_frame_painting(window: isize) {
@@ -1601,7 +1601,7 @@ fn move_message() -> u32 {
     use windows::core::w;
     use windows::Win32::UI::WindowsAndMessaging::RegisterWindowMessageW;
     static MESSAGE: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
-    *MESSAGE.get_or_init(|| unsafe { RegisterWindowMessageW(w!("Sidescreen.BeginMove")) })
+    *MESSAGE.get_or_init(|| unsafe { RegisterWindowMessageW(w!("Expand.BeginMove")) })
 }
 
 /// Asks `window` (watched by [`watch_moves`]) to [`begin_move`] once its thread is back at its
@@ -1655,7 +1655,7 @@ pub fn watch_moves(parent: isize) {
         }
         if msg == move_message() {
             if !begin_move(window.0 as isize) {
-                eprintln!("sidescreen: the button was up (or the display window not in front) before it could follow the pointer; it stays where it is");
+                eprintln!("expand: the button was up (or the display window not in front) before it could follow the pointer; it stays where it is");
             }
             return LRESULT(0);
         }
@@ -2022,12 +2022,12 @@ mod tests {
 
     /// The viewer's stream window is out of sight the moment it is made: on the viewer's own
     /// thread, before `CreateWindowEx` returns there (the in-context hook,
-    /// `sidescreen_viewer_hook.dll`), so it is never on a monitor before it is embedded. Given
+    /// `expand_viewer_hook.dll`), so it is never on a monitor before it is embedded. Given
     /// back (the fallback), it comes back in sight.
     #[test]
     fn a_stream_window_is_out_of_sight_the_moment_it_is_made_until_it_is_given_back() {
         let _serial = one_at_a_time();
-        assert!(viewer_hook_library().is_some(), "sidescreen_viewer_hook.dll is not beside the tests (cargo test --workspace builds it)");
+        assert!(viewer_hook_library().is_some(), "expand_viewer_hook.dll is not beside the tests (cargo test --workspace builds it)");
         let concealer = launcher_concealer();
         let (stream, made_at) = StreamWindow::make_full(w!("SDL_app"), MADE_AT, false, false);
         concealer.reveal();
@@ -2078,7 +2078,7 @@ mod tests {
     }
 
     /// The class of the stand-in for the viewer's launcher (the window it speaks in).
-    const LAUNCHER: &str = "SidescreenTestLauncher";
+    const LAUNCHER: &str = "ExpandTestLauncher";
 
     fn launcher_concealer() -> Concealer {
         Concealer::start_with(std::process::id(), Talkers::OfClass(LAUNCHER), None, true)
@@ -2105,7 +2105,7 @@ mod tests {
     fn a_window_of_the_viewer_that_never_shows_is_left_alone() {
         let _serial = one_at_a_time();
         let concealer = launcher_concealer();
-        let other = StreamWindow::make_as(w!("SidescreenTestLauncher"), MADE_AT, false);
+        let other = StreamWindow::make_as(w!("ExpandTestLauncher"), MADE_AT, false);
         std::thread::sleep(Duration::from_millis(300));
         let at = window_rect(other.window);
         drop(concealer);
@@ -2119,7 +2119,7 @@ mod tests {
     fn a_window_the_viewer_speaks_in_is_told_of_and_left_in_sight() {
         let _serial = one_at_a_time();
         let (concealer, heard) = telling_concealer();
-        let launcher = StreamWindow::make_as(w!("SidescreenTestLauncher"), MADE_AT, true);
+        let launcher = StreamWindow::make_as(w!("ExpandTestLauncher"), MADE_AT, true);
         let told = heard.recv_timeout(Duration::from_secs(3)).ok();
         std::thread::sleep(Duration::from_millis(200));
         let at = window_rect(launcher.window);
@@ -2136,7 +2136,7 @@ mod tests {
     fn the_fallback_shows_the_launcher_a_hidden_start_kept_hidden() {
         let _serial = one_at_a_time();
         let concealer = launcher_concealer();
-        let launcher = StreamWindow::make_ghost(w!("SidescreenTestLauncher"), MADE_AT, false, true);
+        let launcher = StreamWindow::make_ghost(w!("ExpandTestLauncher"), MADE_AT, false, true);
         std::thread::sleep(Duration::from_millis(100));
         let hidden_before = !is_visible(launcher.window);
         concealer.reveal();
@@ -2153,7 +2153,7 @@ mod tests {
         use windows::Win32::UI::WindowsAndMessaging::ShowWindowAsync;
         let _serial = one_at_a_time();
         let (concealer, heard) = telling_concealer();
-        let launcher = StreamWindow::make_as(w!("SidescreenTestLauncher"), MADE_AT, true);
+        let launcher = StreamWindow::make_as(w!("ExpandTestLauncher"), MADE_AT, true);
         let told = heard.recv_timeout(Duration::from_secs(3)).is_ok();
         unsafe {
             let _ = ShowWindowAsync(hwnd(launcher.window), SW_HIDE);
@@ -2173,7 +2173,7 @@ mod tests {
     fn the_fallback_leaves_the_launcher_hidden_once_a_stream_window_showed() {
         let _serial = one_at_a_time();
         let (concealer, heard) = telling_concealer();
-        let launcher = StreamWindow::make_ghost(w!("SidescreenTestLauncher"), MADE_AT, false, true);
+        let launcher = StreamWindow::make_ghost(w!("ExpandTestLauncher"), MADE_AT, false, true);
         let stream = StreamWindow::make_as(w!("SDL_app"), MADE_AT, true);
         let told = heard.recv_timeout(Duration::from_secs(3)).ok();
         concealer.reveal();

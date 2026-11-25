@@ -9,10 +9,10 @@
 
 #[cfg(windows)]
 fn main() {
-    use sidescreen_core::config::{Placement, StreamSettings};
-    use sidescreen_core::session::engines::{RealViewer, ViewerHost};
-    use sidescreen_core::session::ViewerEngine;
-    use sidescreen_core::share::geometry::Area;
+    use expand_core::config::{Placement, StreamSettings};
+    use expand_core::session::engines::{RealViewer, ViewerHost};
+    use expand_core::session::ViewerEngine;
+    use expand_core::share::geometry::Area;
     use std::sync::Arc;
     use std::time::{Duration, Instant};
 
@@ -28,13 +28,13 @@ fn main() {
         }
         fn end(&self) {}
         fn area(&self) -> Option<Area> {
-            sidescreen_core::winwindow::monitors().first().copied()
+            expand_core::winwindow::monitors().first().copied()
         }
     }
 
     let args: Vec<String> = std::env::args().collect();
     let (exe, host, secs) = (&args[1], &args[2], args[3].parse::<u64>().unwrap());
-    sidescreen_core::sharelog::enable();
+    expand_core::sharelog::enable();
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(async {
         let started = Instant::now();
@@ -47,9 +47,9 @@ fn main() {
         std::thread::spawn(move || {
             let mut last = 0;
             loop {
-                let front = sidescreen_core::winwindow::foreground_window();
+                let front = expand_core::winwindow::foreground_window();
                 if front != last {
-                    let pid = sidescreen_core::winwindow::process_of_window(front);
+                    let pid = expand_core::winwindow::process_of_window(front);
                     println!("{:>6} ms  in front: {front:#x} of pid {pid}", started.elapsed().as_millis());
                     last = front;
                 }

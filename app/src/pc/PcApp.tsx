@@ -55,13 +55,13 @@ export function PcApp({ status }: { status: Status | null }) {
   const [winEl, setWinEl] = useState<HTMLDivElement | null>(null);
   const banners = (system?.missing ? 1 : 0) + (status?.config_error ? 1 : 0);
   return (
-    <FluentProvider theme={THEME} className="ss-provider">
-      <div className={`ss-win ${kind}`} ref={setWinEl} style={{ "--ss-banner": `${banners * BANNER_PX}px` } as React.CSSProperties}>
+    <FluentProvider theme={THEME} className="ex-provider">
+      <div className={`ex-win ${kind}`} ref={setWinEl} style={{ "--ex-banner": `${banners * BANNER_PX}px` } as React.CSSProperties}>
         <TitleBar />
         {status ? (
           <PcBody status={status} system={system} refreshSystem={refresh} winEl={winEl} />
         ) : (
-          <div className="ss-loading"><Spinner size="small" /></div>
+          <div className="ex-loading"><Spinner size="small" /></div>
         )}
       </div>
     </FluentProvider>
@@ -90,7 +90,7 @@ function PcBody({ status, system, refreshSystem, winEl }: {
       slotToast.current.set(n.slot, id);
     }
     dispatchToast(
-      <Toast className={`ss-toast ss-toast-${n.intent}`}>
+      <Toast className={`ex-toast ex-toast-${n.intent}`}>
         <ToastTitle>{n.title}</ToastTitle>
         {n.body && <ToastBody>{n.body}</ToastBody>}
         {n.action && (
@@ -111,7 +111,7 @@ function PcBody({ status, system, refreshSystem, winEl }: {
   return (
     <>
       {banners > 0 && (
-        <div className="ss-banners">
+        <div className="ex-banners">
           {system?.missing && (
             <MessageBar intent="warning">
               <MessageBarBody><MessageBarTitle>Moonlight missing</MessageBarTitle></MessageBarBody>
@@ -131,9 +131,9 @@ function PcBody({ status, system, refreshSystem, winEl }: {
         </div>
       )}
       <Header status={status} onOpenSettings={() => setSettingsOpen(true)} />
-      <div className="ss-slot-desk"><Desk status={status} /></div>
-      <div className="ss-slot-controls"><Controls status={status} /></div>
-      {actionError && <ErrorLine className="ss-header-err ss-action-err" failure={actionError} />}
+      <div className="ex-slot-desk"><Desk status={status} /></div>
+      <div className="ex-slot-controls"><Controls status={status} /></div>
+      {actionError && <ErrorLine className="ex-header-err ex-action-err" failure={actionError} />}
       <SettingsDrawer open={settingsOpen} close={closeSettings} status={status} system={system} refreshSystem={refreshSystem} />
       {winEl && <Toaster toasterId={toasterId} mountNode={winEl} offset={{ horizontal: 24, vertical: 24 }} />}
     </>

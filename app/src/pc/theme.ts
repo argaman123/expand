@@ -7,7 +7,7 @@ export const FONT_DISPLAY = '"Segoe UI Variable Display", "Segoe UI", system-ui,
 /** The app's own colours, the same on every page whatever the Windows accent: Fluent's dark theme
  *  on the ramp made from the brand's FILL (brand.ts), a deep blue. Fills are that blue with white on
  *  them; text and thin lines in the brand colour take lighter steps, which read on the
- *  dark window. What is on (the tiles, the switches) takes brand.css's --ss-on instead, and only the
+ *  dark window. What is on (the tiles, the switches) takes brand.css's --ex-on instead, and only the
  *  crossing edge is the gradient. */
 export function makeTheme(color: string = FILL): Theme {
   const ramp = brandRamp(color);

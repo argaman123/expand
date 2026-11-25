@@ -5,7 +5,7 @@ use mdns_sd::{ServiceDaemon, ServiceEvent, ServiceInfo};
 use std::net::IpAddr;
 use std::time::Duration;
 
-pub const SERVICE: &str = "_sidescreen._tcp.local.";
+pub const SERVICE: &str = "_expand._tcp.local.";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Found {
@@ -46,7 +46,7 @@ impl Drop for Advertisement {
 pub fn advertise(name: &str, id: &str, port: u16, pairing: bool) -> Result<Advertisement, DiscoveryError> {
     let err = |e: mdns_sd::Error| DiscoveryError(e.to_string());
     let daemon = ServiceDaemon::new().map_err(err)?;
-    let host = format!("sidescreen-{id}.local.");
+    let host = format!("expand-{id}.local.");
     let properties = [("id", id), ("pairing", if pairing { "1" } else { "0" })];
     let info = ServiceInfo::new(SERVICE, name, &host, "", port, &properties[..])
         .map_err(err)?
@@ -103,7 +103,7 @@ pub async fn find_first_of(service: &str, timeout: Duration) -> Option<Found> {
     found
 }
 
-/// Every Sidescreen Mac that answers within `timeout`, once each (by id; the latest answer wins,
+/// Every Expand Mac that answers within `timeout`, once each (by id; the latest answer wins,
 /// so a Mac that opened its pairing mode meanwhile shows it).
 pub async fn find_all(timeout: Duration) -> Vec<Found> {
     let Ok(daemon) = ServiceDaemon::new() else { return Vec::new() };
@@ -167,11 +167,11 @@ mod tests {
     #[tokio::test]
     async fn nothing_advertised_gives_none() {
         // A service type nobody advertises.
-        assert!(find_first_of("_sidescreen-none._tcp.local.", Duration::from_millis(300)).await.is_none());
+        assert!(find_first_of("_expand-none._tcp.local.", Duration::from_millis(300)).await.is_none());
     }
 
     fn answer(properties: &[(&str, &str)]) -> ServiceInfo {
-        ServiceInfo::new(SERVICE, "test-mac", "sidescreen-abc.local.", "192.168.1.50", 47800, properties).unwrap()
+        ServiceInfo::new(SERVICE, "test-mac", "expand-abc.local.", "192.168.1.50", 47800, properties).unwrap()
     }
 
     #[test]

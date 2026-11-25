@@ -21,12 +21,14 @@ export interface BarState {
   near: boolean;
   /** The bar shows by itself for a moment. */
   peeking: boolean;
+  /** The user pinned the bar: it stays, the pointer far away or not. */
+  pinned: boolean;
 }
 
-/** What shows: the bar while open, near or peeking (all of the window with a menu or popover),
+/** What shows: the bar while open, near, peeking or pinned (all of the window with a menu or popover),
  *  else nothing. Holding the title bar's popover, only that. */
 export function barTarget(s: BarState): BarShape {
   if (s.popup) return s.popOpen ? "menu" : "hidden";
   if (s.open && s.menu) return "menu";
-  return s.open || s.near || s.peeking ? "bar" : "hidden";
+  return s.open || s.near || s.peeking || s.pinned ? "bar" : "hidden";
 }

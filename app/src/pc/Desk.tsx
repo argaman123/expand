@@ -14,8 +14,8 @@ const box = (r: Rect): CSSProperties => ({ ...at(r.x, r.y), width: r.w, height: 
 const FLOOR_PX = 100;
 /** pc.css knobs for trying other proportions (geometry.ts DeskShape); unset, the defaults hold. */
 const KNOBS: [keyof DeskShape, string][] = [
-  ["neck", "--ss-stand-neck"], ["macW", "--ss-mac-w"], ["macAspect", "--ss-mac-aspect"],
-  ["neckW", "--ss-neck-w"], ["baseW", "--ss-base-w"], ["footH", "--ss-foot-h"],
+  ["neck", "--ex-stand-neck"], ["macW", "--ex-mac-w"], ["macAspect", "--ex-mac-aspect"],
+  ["neckW", "--ex-neck-w"], ["baseW", "--ex-base-w"], ["footH", "--ex-foot-h"],
 ];
 function readKnobs(el: Element): Partial<DeskShape> {
   const style = getComputedStyle(el);
@@ -42,7 +42,7 @@ export function Desk({ status }: { status: Status }) {
   const [pending, setPending] = useState<string | null>(null); // the place just dropped on, until the status confirms it
   const [error, setError] = useState<Failure | null>(null);
   const heatEl = useRef<HTMLDivElement>(null);
-  // How near the window is to the edge the cursor crosses to the Mac (useHeat sets --ss-heat).
+  // How near the window is to the edge the cursor crosses to the Mac (useHeat sets --ex-heat).
   useHeat([heatEl], monitors, status.placement, status.connection === "connected");
 
   // While the window is being resized everything follows at once; after that, moves glide.
@@ -173,44 +173,44 @@ export function Desk({ status }: { status: Status }) {
     <>
     {/* Outside the stage, whose clip would cut it to a box: the light reaches across the window.
         The light in through the window's own side covers the window. */}
-    <div ref={heatEl} className={`ss-heat ${light} ${heatSide}`} aria-hidden><div className="ss-heat-light" /></div>
-    <div className={`ss-stage${size.resizing ? " ss-still" : ""}`} ref={ref}>
-      <div className="ss-world" ref={world} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.s})` }}>
+    <div ref={heatEl} className={`ex-heat ${light} ${heatSide}`} aria-hidden><div className="ex-heat-light" /></div>
+    <div className={`ex-stage${size.resizing ? " ex-still" : ""}`} ref={ref}>
+      <div className="ex-world" ref={world} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.s})` }}>
       {layout.monitors.length > 0 && (
-        <div className="ss-floor" style={{ transform: `translate(${layout.floor.x}px, ${layout.deskY}px) scaleX(${floorW / FLOOR_PX})` }} />
+        <div className="ex-floor" style={{ transform: `translate(${layout.floor.x}px, ${layout.deskY}px) scaleX(${floorW / FLOOR_PX})` }} />
       )}
       {layout.slots.map((s) => (
-        <div key={s.id} className={`ss-slot${drag ? " visible" : ""}`} style={{ ...at(s.x, s.y), width: layout.mac.w, height: layout.mac.h }} />
+        <div key={s.id} className={`ex-slot${drag ? " visible" : ""}`} style={{ ...at(s.x, s.y), width: layout.mac.w, height: layout.mac.h }} />
       ))}
       {layout.monitors.map((m) => (
-        <div key={m.number} className={`ss-desk-mon${canShow && shown !== m.number ? " can-show" : ""}`}>
-          <div className="ss-neck" style={box(m.neck)} />
-          <div className="ss-foot" style={box(m.base)} />
-          <div className="ss-bezel" style={box(m)}>
-            <div className="ss-scr">
-              <div className="ss-wall">
-                <div className="ss-wall-pic" style={{ left: span.x - m.x, top: span.y - m.y, width: span.w, height: span.h }} />
+        <div key={m.number} className={`ex-desk-mon${canShow && shown !== m.number ? " can-show" : ""}`}>
+          <div className="ex-neck" style={box(m.neck)} />
+          <div className="ex-foot" style={box(m.base)} />
+          <div className="ex-bezel" style={box(m)}>
+            <div className="ex-scr">
+              <div className="ex-wall">
+                <div className="ex-wall-pic" style={{ left: span.x - m.x, top: span.y - m.y, width: span.w, height: span.h }} />
               </div>
-              <div className={`ss-macscreen${shown === m.number ? " on" : ""}${windowed ? " windowed" : ""}`}>
+              <div className={`ex-macscreen${shown === m.number ? " on" : ""}${windowed ? " windowed" : ""}`}>
                 <div className="w1" />
                 <div className="w2" />
               </div>
               {/* Inside the screen, so the layer is cut to it exactly. */}
               {canShow && shown !== m.number && (
-                <button type="button" className="ss-showhere" aria-label={`Show here, monitor ${m.number}`} onClick={() => showOn(m.number)}>
+                <button type="button" className="ex-showhere" aria-label={`Show here, monitor ${m.number}`} onClick={() => showOn(m.number)}>
                   <Desktop16Regular />Show here
                 </button>
               )}
             </div>
-            <span className={`ss-num${shown === m.number ? " sel" : ""}`}>{m.number}</span>
+            <span className={`ex-num${shown === m.number ? " sel" : ""}`}>{m.number}</span>
           </div>
         </div>
       ))}
-      <div className={`ss-edge${edge ? ` on ${slot?.side ?? ""}` : ""}${edge && edge.w > edge.h ? " across" : ""}`} style={edge ? box(edge) : undefined} />
+      <div className={`ex-edge${edge ? ` on ${slot?.side ?? ""}` : ""}${edge && edge.w > edge.h ? " across" : ""}`} style={edge ? box(edge) : undefined} />
       {pos && (
         <div
           ref={macEl}
-          className={`ss-mac${drag ? " dragging" : ""}`}
+          className={`ex-mac${drag ? " dragging" : ""}`}
           style={{ ...at(pos.x, pos.y), width: layout.mac.w, height: layout.mac.h }}
           onPointerDown={down}
           onPointerMove={move}
@@ -218,15 +218,15 @@ export function Desk({ status }: { status: Status }) {
           onPointerCancel={up}
           onLostPointerCapture={up}
         >
-          <div className="ss-mac-body">
-            <div className="ss-lid"><div className="ss-lid-scr"><i /></div></div>
-            <div className="ss-deck" />
-            <div className="ss-lip"><i /></div>
+          <div className="ex-mac-body">
+            <div className="ex-lid"><div className="ex-lid-scr"><i /></div></div>
+            <div className="ex-deck" />
+            <div className="ex-lip"><i /></div>
           </div>
         </div>
       )}
       </div>
-      {error && <ErrorLine className="ss-desk-err" failure={error} />}
+      {error && <ErrorLine className="ex-desk-err" failure={error} />}
     </div>
     </>
   );

@@ -1,4 +1,4 @@
-// `sidescreen-panel --render FIXTURE OUT.png [--width 400] [--appearance dark|light]`: draws the
+// `expand-panel --render FIXTURE OUT.png [--width 400] [--appearance dark|light]`: draws the
 // panel for a fixture into a PNG at 2× without any window, then exits. Works over SSH.
 // Materials, Liquid Glass and AppKit controls don't draw offscreen, so the panel's background is
 // a representative solid and the switches are drawn shapes.
@@ -30,7 +30,7 @@ enum Render {
             rest.remove(at: i)
         }
         guard rest.count == 2 else {
-            return fail("usage: sidescreen-panel --render FIXTURE OUT.png [--width 400] [--appearance dark|light] [--render-hover|--render-pressed]")
+            return fail("usage: expand-panel --render FIXTURE OUT.png [--width 400] [--appearance dark|light] [--render-hover|--render-pressed]")
         }
         guard let data = FileManager.default.contents(atPath: rest[0]), let dto = decodeState(data) else {
             return fail("\(rest[0]): does not decode")
@@ -63,7 +63,7 @@ enum Render {
     }
 
     private static func fail(_ message: String) -> Int32 {
-        FileHandle.standardError.write(Data("sidescreen-panel: \(message)\n".utf8))
+        FileHandle.standardError.write(Data("expand-panel: \(message)\n".utf8))
         return 2
     }
 }

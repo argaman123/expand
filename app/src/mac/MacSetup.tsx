@@ -31,14 +31,14 @@ export function MacSetup({ status }: { status: Status }) {
       <header className="top">
         <img className="app-icon" src="/icon-mac.png" alt="" width={36} height={36} />
         <div className="titles">
-          <h1>Sidescreen</h1>
-          <p className="muted">An extra display and a shared mouse for your Mac</p>
+          <h1>Expand</h1>
+          <p className="muted">One continuous desktop with your PC</p>
         </div>
       </header>
 
       {missing && (
         <div className="notice">
-          <p>{installNote ?? `${missing} isn't installed. Sidescreen needs it to show the display.`}</p>
+          <p>{installNote ?? `${missing} isn't installed. Expand needs it to show the display.`}</p>
           <button className="secondary" onClick={install}>Install</button>
         </div>
       )}
@@ -97,7 +97,7 @@ export function MacSetup({ status }: { status: Status }) {
             />
           </label>
         </div>
-        <p className="note">When it's done, Sidescreen waits in the menu bar. Open Sidescreen on your PC and press Connect.</p>
+        <p className="note">When it's done, Expand waits in the menu bar. Open Expand on your PC and press Connect.</p>
         <button className="primary done" onClick={() => void closeWindow()}>Done</button>
       </main>
     </div>

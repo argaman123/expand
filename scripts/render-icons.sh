@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Renders every Sidescreen icon file from the SVG sources in design/icons:
+# Renders every Expand icon file from the SVG sources in design/icons:
 #
 #   icon.svg               the app icon on Apple's 1024 grid: the .icns and the bundle PNGs (via
 #                          `tauri icon`), the .ico's 48/64/256 (cropped to Windows' tighter

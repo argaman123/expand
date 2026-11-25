@@ -6,7 +6,7 @@ use tokio::io::{AsyncBufRead, AsyncBufReadExt, AsyncReadExt, AsyncWrite, AsyncWr
 
 pub const MAX_LINE: usize = 64 * 1024;
 
-/// Sidescreen's protocol version, said in the control link's hello and challenge and in the
+/// Expand's protocol version, said in the control link's hello and challenge and in the
 /// mouse and keyboard channel's hellos. 2: the sharing channel says its version and claims the
 /// Mac only after the PC's proof. 3: pairing is a SPAKE2 exchange keyed by the code (the token
 /// never crosses the network in the clear). A side that says no version is older than 3.

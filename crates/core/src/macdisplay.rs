@@ -1,4 +1,4 @@
-//! The virtual display on the Mac: created by our helper (sidescreen-display) at the requested
+//! The virtual display on the Mac: created by our helper (expand-display) at the requested
 //! size, and placed beside the MacBook on the PC's side.
 
 pub use crate::side::Side;
@@ -56,7 +56,7 @@ pub fn place_virtual(id: u32, toward_pc: Side) -> Result<(), String> {
         .map_err(|e| format!("could not apply the display arrangement ({e})"))
 }
 
-/// The vendor number the helper gives Sidescreen's display ("SS"), to tell it from real ones.
+/// The vendor number the helper gives Expand's display ("SS"), to tell it from real ones.
 pub const VENDOR_ID: u32 = 0x5353;
 
 /// Reads the helper's "ready <display id>" line.
@@ -64,7 +64,7 @@ pub fn parse_ready(line: &str) -> Option<u32> {
     line.trim().strip_prefix("ready ")?.trim().parse().ok()
 }
 
-/// Sidescreen's virtual display: lives as long as the helper process that created it.
+/// Expand's virtual display: lives as long as the helper process that created it.
 #[cfg(target_os = "macos")]
 pub struct VirtualDisplay {
     helper: tokio::process::Child,
@@ -77,7 +77,7 @@ pub struct VirtualDisplay {
 /// The helper ships inside the app, next to its executable.
 #[cfg(target_os = "macos")]
 fn helper_path() -> Option<std::path::PathBuf> {
-    let path = std::env::current_exe().ok()?.parent()?.join("sidescreen-display");
+    let path = std::env::current_exe().ok()?.parent()?.join("expand-display");
     path.exists().then_some(path)
 }
 

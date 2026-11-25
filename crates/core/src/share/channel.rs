@@ -21,9 +21,9 @@ pub const INPUT_PORT: u16 = crate::link::CONTROL_PORT + 1;
 
 /// Largest frame accepted: input messages are tiny; a copied image can be a few megabytes.
 const MAX_FRAME: usize = 48 * 1024 * 1024;
-const PROOF: &[u8] = b"sidescreen input";
+const PROOF: &[u8] = b"expand input";
 
-/// The handshake's version, Sidescreen's protocol version ([`crate::protocol::PROTOCOL`]).
+/// The handshake's version, Expand's protocol version ([`crate::protocol::PROTOCOL`]).
 /// 2: both hellos say their version, and the Mac claims its slot only after the PC's proof
 /// (answering with a refusal there when it lost a race). 3: nothing changed here, but pairing
 /// did, so a PC and a Mac that cannot pair do not share either. A side whose hello has no
@@ -119,7 +119,7 @@ pub enum Refusal {
     Blocked,
     /// The Mac does not know this PC.
     Unknown,
-    /// The two computers run versions of Sidescreen that cannot work together.
+    /// The two computers run versions of Expand that cannot work together.
     Version,
 }
 
@@ -158,7 +158,7 @@ impl std::fmt::Display for ShareHandshakeError {
             ShareHandshakeError::Refused(Refusal::Busy { by }) => write!(f, "the Mac is in use by {by}"),
             ShareHandshakeError::Refused(Refusal::Blocked) => write!(f, "the Mac has blocked this PC"),
             ShareHandshakeError::Refused(Refusal::Unknown) => write!(f, "the Mac does not know this PC"),
-            ShareHandshakeError::Refused(Refusal::Version) => write!(f, "the other computer runs another version of Sidescreen"),
+            ShareHandshakeError::Refused(Refusal::Version) => write!(f, "the other computer runs another version of Expand"),
             ShareHandshakeError::Unproven => write!(f, "the Mac did not accept this PC's pairing"),
             ShareHandshakeError::Io(e) => write!(f, "{e}"),
         }
@@ -262,8 +262,8 @@ fn derive(token: &str, pc_nonce: &[u8], mac_nonce: &[u8]) -> (ChaCha20Poly1305, 
     let salt = [pc_nonce, mac_nonce].concat();
     let hk = hkdf::Hkdf::<sha2::Sha256>::new(Some(&salt), token.as_bytes());
     let (mut to_mac, mut to_pc) = ([0u8; 32], [0u8; 32]);
-    hk.expand(b"sidescreen input pc to mac", &mut to_mac).expect("32 bytes is a valid length");
-    hk.expand(b"sidescreen input mac to pc", &mut to_pc).expect("32 bytes is a valid length");
+    hk.expand(b"expand input pc to mac", &mut to_mac).expect("32 bytes is a valid length");
+    hk.expand(b"expand input mac to pc", &mut to_pc).expect("32 bytes is a valid length");
     (ChaCha20Poly1305::new(Key::from_slice(&to_mac)), ChaCha20Poly1305::new(Key::from_slice(&to_pc)))
 }
 

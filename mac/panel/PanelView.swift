@@ -63,7 +63,7 @@ struct PanelView: View {
                 .resizable()
                 .frame(width: 24, height: 24)
                 .accessibilityHidden(true)
-            Text("Sidescreen")
+            Text("Expand")
                 .font(.system(size: 15, weight: .semibold))
             Spacer(minLength: 8)
             if let version = model.state?.version {
@@ -139,7 +139,7 @@ private struct QuitButton: View {
 
     var body: some View {
         Button(action: action) {
-            Text("Quit Sidescreen")
+            Text("Quit Expand")
                 .font(.system(size: 12))
                 .foregroundStyle(lit ? .primary : .secondary)
                 .padding(.horizontal, 10)
@@ -253,7 +253,7 @@ struct OrangeDot: View {
 
 // MARK: - Buttons
 
-/// The panel's small buttons: grey (Allow, Cancel), the brand's gradient (Connect) or red (Forget).
+/// The panel's small buttons: grey (Allow, Cancel), the brand's solid blue (Connect) or red (Forget).
 struct PillButtonStyle: ButtonStyle {
     enum Kind { case plain, brand, red }
     var kind: Kind = .plain
@@ -289,8 +289,8 @@ struct PillButtonStyle: ButtonStyle {
                 .animation(reduceMotion ? nil : .easeOut(duration: 0.08), value: pressed)
         }
 
-        /// The hover's lift; small on the brand's gradient so Connect's label keeps its contrast.
-        private var hoverLift: Double { kind == .brand ? 0.04 : 0.08 }
+        /// The hover: Connect dims a little (its label keeps its contrast), Forget lifts.
+        private var hoverLift: Double { kind == .brand ? -0.05 : 0.08 }
 
         private var shape: RoundedRectangle {
             RoundedRectangle(cornerRadius: kind == .plain ? 7 : 13, style: .continuous)

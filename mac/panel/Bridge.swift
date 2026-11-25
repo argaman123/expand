@@ -1,4 +1,4 @@
-// The link to the Sidescreen app: JSON lines. A `PanelDto` arrives on stdin after start and on
+// The link to the Expand app: JSON lines. A `PanelDto` arrives on stdin after start and on
 // every change, and replaces the whole model. Actions go out on stdout, one line each. EOF on
 // stdin means quit. Nothing here is ever logged: the state can hold the pairing code.
 

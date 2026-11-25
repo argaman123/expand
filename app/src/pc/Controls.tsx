@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "rea
 import { Dropdown, Link, Option, Spinner, Switch, ToggleButton } from "@fluentui/react-components";
 import { Desktop20Regular, KeyboardMouse20Regular } from "@fluentui/react-icons";
 import {
-  connectMac, displayFullScreen, displayStart, displayStop, displayWindow, isMissingCommand, saveSettings, setClipboardSharing, setCtrlAsCmd, setReverseScroll,
+  connectMac, displayFullScreen, displayStart, displayStop, displayWindow, isMissingCommand, saveSettings, setClipboardSharing, setCtrlAsCmd, setMacSound, setReverseScroll,
   setLanguageFollow, setMouseSharing, type Settings, type Status, type WindowMode,
 } from "../api";
 import { HoverPanel } from "./HoverPanel";
@@ -12,13 +12,13 @@ import { ErrorLine, failureText, type Failure } from "./ErrorLine";
 import { bitrateOptions, fpsLabel, fpsOptions, rateLabel, resKey, resLabel, resolutionOptions } from "./displayOptions";
 
 function Row({ label, id, children }: { label: string; id?: string; children: ReactNode }) {
-  return <div className="ss-row"><label htmlFor={id}>{label}</label>{children}</div>;
+  return <div className="ex-row"><label htmlFor={id}>{label}</label>{children}</div>;
 }
 
 const CONNECT_WAIT_MS = 10_000;
 
 export function Controls({ status }: { status: Status }) {
-  const ids = { res: useId(), fps: useId(), rate: useId(), clip: useId(), lang: useId(), cmd: useId(), scroll: useId() };
+  const ids = { res: useId(), fps: useId(), rate: useId(), clip: useId(), lang: useId(), cmd: useId(), scroll: useId(), sound: useId() };
   const monitors = useMonitors();
   const [panel, setPanel] = useState<"mouse" | "display" | null>(null); // the hover panel showing: one at a time
   const [error, setError] = useState<Failure | null>(null);
@@ -158,14 +158,14 @@ export function Controls({ status }: { status: Status }) {
 
   return (
     <>
-      <div className="ss-tilewrap">
+      <div className="ex-tilewrap">
         <HoverPanel
           label="Mouse and keyboard settings"
           current={panel === "mouse"}
           onOpen={() => setPanel("mouse")}
           trigger={
             <ToggleButton
-              className="ss-tile"
+              className="ex-tile"
               checked={mouseOn}
               icon={<KeyboardMouse20Regular />}
               aria-label="Mouse and keyboard"
@@ -173,11 +173,11 @@ export function Controls({ status }: { status: Status }) {
             />
           }
         >
-          <div className="ss-ph">
+          <div className="ex-ph">
             <KeyboardMouse20Regular /><b>Mouse and keyboard</b>
             <Switch checked={mouseOn} aria-label="Mouse and keyboard" onChange={(_, d) => attempt(() => setMouseSharing(d.checked))} />
           </div>
-          <div className="ss-pb">
+          <div className="ex-pb">
             <Row label="Clipboard" id={ids.clip}>
               <Switch id={ids.clip} checked={status.clipboard_sharing} onChange={(_, d) => attempt(() => setClipboardSharing(d.checked))} />
             </Row>
@@ -201,22 +201,22 @@ export function Controls({ status }: { status: Status }) {
               />
             </Row>
             {/* Alt is always Option on the Mac (share/keys.rs, and Sunshine in the display): said, as the owner asked (round 4). */}
-            <Row label="Option ⌥"><span className="ss-keys"><kbd>Alt</kbd></span></Row>
-            <Row label="Return to PC"><span className="ss-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Alt</kbd><kbd>Win</kbd></span></Row>
+            <Row label="Option ⌥"><span className="ex-keys"><kbd>Alt</kbd></span></Row>
+            <Row label="Return to PC"><span className="ex-keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Alt</kbd><kbd>Win</kbd></span></Row>
           </div>
         </HoverPanel>
-        <span className="ss-tl">Mouse and keyboard</span>
-        <span className="ss-state">{mouseOn ? "On" : "Off"}</span>
+        <span className="ex-tl">Mouse and keyboard</span>
+        <span className="ex-state">{mouseOn ? "On" : "Off"}</span>
       </div>
 
-      <div className="ss-tilewrap">
+      <div className="ex-tilewrap">
         <HoverPanel
           label="Extended display settings"
           current={panel === "display"}
           onOpen={() => setPanel("display")}
           trigger={
             <ToggleButton
-              className="ss-tile"
+              className="ex-tile"
               checked={connected}
               aria-label="Extended display"
               onClick={toggleDisplay}
@@ -224,7 +224,7 @@ export function Controls({ status }: { status: Status }) {
             />
           }
         >
-          <div className="ss-ph">
+          <div className="ex-ph">
             <Desktop20Regular /><b>Extended display</b>
             <Switch
               checked={connected || starting}
@@ -232,13 +232,13 @@ export function Controls({ status }: { status: Status }) {
               onChange={(_, d) => { if (!d.checked) stop(); else if (!connected && !starting) void start(); }}
             />
           </div>
-          <div className="ss-pb">
+          <div className="ex-pb">
             <Row label="Monitor">
-              <span className="ss-monpick">
+              <span className="ex-monpick">
                 {picks.map((m) => (
                   <button
                     key={m.n}
-                    className={`ss-mp${selMonitor === m.n ? " sel" : ""}`}
+                    className={`ex-mp${selMonitor === m.n ? " sel" : ""}`}
                     style={{ width: m.w, height: m.h }}
                     aria-pressed={selMonitor === m.n}
                     onClick={() => save({ monitor: m.n })}
@@ -247,7 +247,7 @@ export function Controls({ status }: { status: Status }) {
               </span>
             </Row>
             <Row label="Mode">
-              <span className="ss-seg">
+              <span className="ex-seg">
                 {([["windowed", "Window"], ["borderless", "Full screen"]] as [WindowMode, string][]).map(([mode, text]) => (
                   <ToggleButton key={mode} size="small" appearance="subtle" checked={s.window_mode === mode} onClick={() => setMode(mode)}>{text}</ToggleButton>
                 ))}
@@ -255,7 +255,7 @@ export function Controls({ status }: { status: Status }) {
             </Row>
             <Row label="Resolution" id={ids.res}>
               <Dropdown
-                id={ids.res} inlinePopup size="small" className="ss-dd"
+                id={ids.res} inlinePopup size="small" className="ex-dd"
                 value={resLabel(cur)} selectedOptions={[resKey(cur)]}
                 onOptionSelect={(_, d) => {
                   const r = resOpts.find((x) => resKey(x) === d.optionValue);
@@ -267,7 +267,7 @@ export function Controls({ status }: { status: Status }) {
             </Row>
             <Row label="Frame rate" id={ids.fps}>
               <Dropdown
-                id={ids.fps} inlinePopup size="small" className="ss-dd"
+                id={ids.fps} inlinePopup size="small" className="ex-dd"
                 value={fpsLabel(s.fps)} selectedOptions={[String(s.fps)]}
                 onOptionSelect={(_, d) => d.optionValue && save({ fps: Number(d.optionValue) })}
               >
@@ -276,28 +276,36 @@ export function Controls({ status }: { status: Status }) {
             </Row>
             <Row label="Bitrate" id={ids.rate}>
               <Dropdown
-                id={ids.rate} inlinePopup size="small" className="ss-dd"
+                id={ids.rate} inlinePopup size="small" className="ex-dd"
                 value={rateLabel(s.bitrate_mbps)} selectedOptions={[String(s.bitrate_mbps)]}
                 onOptionSelect={(_, d) => d.optionValue && save({ bitrate_mbps: Number(d.optionValue) })}
               >
                 {bitrateOptions(s.bitrate_mbps).map((v) => <Option key={v} value={String(v)} text={rateLabel(v)}>{rateLabel(v)}</Option>)}
               </Dropdown>
             </Row>
+            <Row label="Mac sound" id={ids.sound}>
+              <Switch
+                id={ids.sound}
+                checked={status.mac_sound ?? false}
+                disabled={status.mac_sound === undefined}
+                onChange={(_, d) => attempt(() => setMacSound(d.checked))}
+              />
+            </Row>
           </div>
         </HoverPanel>
-        <span className="ss-tl">Extended display</span>
+        <span className="ex-tl">Extended display</span>
         {starting ? (
-          <span className="ss-state"><Spinner size="extra-tiny" />Starting</span>
+          <span className="ex-state"><Spinner size="extra-tiny" />Starting</span>
         ) : failed ? (
-          <span className="ss-state ss-state-fail" title={`${status.part ?? ""}: ${status.reason ?? ""}`}>
-            <span className="ss-state-txt">{status.part ?? "Display"}: {status.reason ?? "failed"}</span>
+          <span className="ex-state ex-state-fail" title={`${status.part ?? ""}: ${status.reason ?? ""}`}>
+            <span className="ex-state-txt">{status.part ?? "Display"}: {status.reason ?? "failed"}</span>
             <Link as="button" onClick={() => void start()}>Retry</Link>
           </span>
         ) : (
-          <span className="ss-state">{connected ? `${s.width} × ${s.height} · ${s.fps} fps` : "Off"}</span>
+          <span className="ex-state">{connected ? `${s.width} × ${s.height} · ${s.fps} fps` : "Off"}</span>
         )}
       </div>
-      {error && <ErrorLine className="ss-ctl-err" failure={error} />}
+      {error && <ErrorLine className="ex-ctl-err" failure={error} />}
     </>
   );
 }

@@ -1,4 +1,4 @@
-//! The display window (PC only): Sidescreen's own window around the Mac's display. Moonlight's
+//! The display window (PC only): Expand's own window around the Mac's display. Moonlight's
 //! stream window is embedded in it as a child, under a 40px title bar drawn by the web view, or
 //! filling the whole window when it is full screen.
 //!
@@ -10,8 +10,8 @@
 //! except after a failure, which it shows with Retry and Close. Never an empty frame: wherever
 //! there is no stream, the placeholder shows.
 
-use sidescreen_core::layout::{is_on, monitor_by_number, monitor_number, numbered_monitors};
-use sidescreen_core::share::geometry::Area;
+use expand_core::layout::{is_on, monitor_by_number, monitor_number, numbered_monitors};
+use expand_core::share::geometry::Area;
 use tauri::AppHandle;
 
 pub const LABEL: &str = "display";
@@ -99,7 +99,7 @@ pub enum Front {
     ViewerDialog,
     /// No window is in front (for a moment, as the one in front goes).
     Nothing,
-    /// Anything else: another app, or Sidescreen's main window.
+    /// Anything else: another app, or Expand's main window.
     Other,
 }
 
@@ -257,7 +257,7 @@ fn refit_plan(seen: u64, now: u64, full_screen: bool, filled: Option<Area>, moni
 /// Saves the display's mode (and the monitor it fills or is on, when given) without touching the
 /// stream, so the display goes on; the main window hears of it. Once per change.
 pub fn save_mode(app: &AppHandle, full_screen: bool, monitor: Option<u32>) -> Result<(), String> {
-    use sidescreen_core::config::WindowMode;
+    use expand_core::config::WindowMode;
     use tauri::Manager;
     let shared = app.state::<crate::Shared>();
     let mode = if full_screen { WindowMode::Borderless } else { WindowMode::Windowed };
@@ -267,7 +267,7 @@ pub fn save_mode(app: &AppHandle, full_screen: bool, monitor: Option<u32>) -> Re
             Ok(())
         }
         Err(e) => {
-            eprintln!("sidescreen: the display's mode was not saved: {e}");
+            eprintln!("expand: the display's mode was not saved: {e}");
             Err(e)
         }
     }
@@ -283,14 +283,14 @@ mod imp {
         watching, Front, ModeChange, Placing, Refit, Showing, Step, LABEL,
     };
     use serde::Serialize;
-    use sidescreen_core::config::Placement;
-    use sidescreen_core::layout::{
+    use expand_core::config::Placement;
+    use expand_core::layout::{
         child_rect, clamp_into, is_on, monitor_by_number, monitor_label, monitor_number, pulled_window, viewer_frame,
         viewer_monitor, TITLE_BAR,
     };
-    use sidescreen_core::session::engines::ViewerHost;
-    use sidescreen_core::share::geometry::Area;
-    use sidescreen_core::winwindow;
+    use expand_core::session::engines::ViewerHost;
+    use expand_core::share::geometry::Area;
+    use expand_core::winwindow;
     use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, Ordering};
     use std::sync::Mutex;
     use std::time::Duration;
@@ -350,7 +350,7 @@ mod imp {
     /// Makes the display window, hidden. On the main thread (in setup).
     pub fn create(app: &AppHandle) -> tauri::Result<()> {
         let window = tauri::WebviewWindowBuilder::new(app, LABEL, tauri::WebviewUrl::App("display.html".into()))
-            .title("Sidescreen")
+            .title("Expand")
             .decorations(false)
             .resizable(true)
             .visible(false)
@@ -468,7 +468,7 @@ mod imp {
         // Only the viewer's windows are looked at further.
         let dialog = pid != 0 && viewer == Some(pid) && {
             let on_a_monitor = winwindow::window_rect(front)
-                .is_some_and(|r| sidescreen_core::layout::shows_on(r, &winwindow::monitors()));
+                .is_some_and(|r| expand_core::layout::shows_on(r, &winwindow::monitors()));
             is_dialog(winwindow::is_visible(front), on_a_monitor, winwindow::is_stream_window(front))
         };
         front_of(front, host_window(), bar, pid, viewer, dialog)
@@ -478,10 +478,10 @@ mod imp {
     /// once where the session goes (`full_screen` or not, on the `monitor` chosen, else the one
     /// on the Mac's side), "Starting" in it, and the viewer's window goes into it when it comes.
     /// It comes in front, unless it is held up through a restart (it keeps whatever is in front).
-    /// With `SIDESCREEN_NO_EMBED` the viewer keeps its own window and nothing shows. From any
+    /// With `EXPAND_NO_EMBED` the viewer keeps its own window and nothing shows. From any
     /// thread: the window is placed on the main thread, never waited for.
     pub fn begin(app: &AppHandle, full_screen: bool, monitor: Option<u32>, placement: Placement, stream: (u32, u32)) -> u64 {
-        let embedding = !sidescreen_core::session::engines::embedding_disabled();
+        let embedding = !expand_core::session::engines::embedding_disabled();
         let (generation, in_front) = {
             let mut host = HOST.lock().unwrap();
             host.generation += 1;
@@ -564,7 +564,7 @@ mod imp {
             let _ = window.show();
         }
         let monitor = if placing.full_screen { Some(placing.rect) } else { monitor_of(placing.rect) };
-        eprintln!("sidescreen: the display window shows, starting");
+        eprintln!("expand: the display window shows, starting");
         emit_mode(app, placing.full_screen, monitor);
     }
 
@@ -713,7 +713,7 @@ mod imp {
             let front = front_now(winwindow::foreground_window(), bar);
             let takes = takes_front(front, winwindow::is_minimized(parent));
             if !takes {
-                eprintln!("sidescreen: the stream is in; the display window leaves the front to {front:?}");
+                eprintln!("expand: the stream is in; the display window leaves the front to {front:?}");
             }
             takes
         });
@@ -953,7 +953,7 @@ mod imp {
         // The keyboard ends on the stream (crossing to the Mac keeps the window in front then).
         focus_child_if_in_front(parent);
         let number = monitor_number(&winwindow::monitors(), &target);
-        eprintln!("sidescreen: the display fills monitor {}", monitor_label(number.unwrap_or(0), &target));
+        eprintln!("expand: the display fills monitor {}", monitor_label(number.unwrap_or(0), &target));
         emit_mode(app, true, Some(target));
         if save {
             save_mode(app, true, number)?;
@@ -1068,7 +1068,7 @@ mod imp {
         }
         let _ = windowed_now(app, stream, Some(rect));
         eprintln!(
-            "sidescreen: the display was pulled down to a {} \u{d7} {} window",
+            "expand: the display was pulled down to a {} \u{d7} {} window",
             rect.right - rect.left,
             rect.bottom - rect.top
         );
@@ -1266,7 +1266,7 @@ mod imp {
         if to != rect {
             winwindow::place_window(parent, to);
             relayout();
-            eprintln!("sidescreen: the display window was put back inside its monitor's work area");
+            eprintln!("expand: the display window was put back inside its monitor's work area");
         }
     }
 
@@ -1351,7 +1351,7 @@ pub fn display_minimize(app: AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sidescreen_core::share::geometry::Area;
+    use expand_core::share::geometry::Area;
 
     const M1: Area = Area { left: 0.0, top: 0.0, right: 1920.0, bottom: 1080.0 };
     const M2: Area = Area { left: 1920.0, top: 0.0, right: 4480.0, bottom: 1440.0 };

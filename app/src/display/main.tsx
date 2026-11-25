@@ -14,7 +14,7 @@ import "./display.css";
 function DisplayPage() {
   const status = useStatus();
   return (
-    <FluentProvider theme={THEME} className="ss-display">
+    <FluentProvider theme={THEME} className="ex-display">
       <DisplayTitleBar status={status} />
       <Placeholder status={status} />
     </FluentProvider>

@@ -13,7 +13,7 @@ pub trait MacDesk {
     fn main(&self) -> Area;
     /// Every screen, the MacBook's included.
     fn displays(&self) -> Vec<Area>;
-    /// Sidescreen's virtual display, when it exists.
+    /// Expand's virtual display, when it exists.
     fn virtual_display(&self) -> Option<Area>;
     fn pointer(&self) -> (f64, f64);
     /// Whether the left button is down for anyone (the display stream's virtual mouse too).

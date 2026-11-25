@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { PEEK_MS, barTarget, type BarState } from "../src/bar/peek.ts";
 
-const idle: BarState = { popup: false, popOpen: false, open: false, menu: false, near: false, peeking: false };
+const idle: BarState = { popup: false, popOpen: false, open: false, menu: false, near: false, peeking: false, pinned: false };
 
 test("with nothing going on, nothing shows", () => {
   assert.equal(barTarget(idle), "hidden");
@@ -35,4 +35,13 @@ test("a peek lasts about three seconds", () => {
 test("after a peek the bar goes, unless the pointer is near", () => {
   assert.equal(barTarget({ ...idle, peeking: false }), "hidden");
   assert.equal(barTarget({ ...idle, peeking: false, near: true }), "bar");
+});
+
+test("pinned, the bar stays with the pointer far away; a menu still takes all of the window", () => {
+  assert.equal(barTarget({ ...idle, pinned: true }), "bar");
+  assert.equal(barTarget({ ...idle, pinned: true, open: true, menu: true }), "menu");
+});
+
+test("pinned, the title bar's popover still shows alone", () => {
+  assert.equal(barTarget({ ...idle, pinned: true, popup: true }), "hidden");
 });

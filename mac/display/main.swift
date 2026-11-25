@@ -1,7 +1,7 @@
-// sidescreen-display WIDTH HEIGHT FPS
+// expand-display WIDTH HEIGHT FPS
 //
-// Creates Sidescreen's virtual display at exactly that size and refresh rate, prints
-// "ready <display id>", and keeps it until the Sidescreen app goes away (its stdin closes) or
+// Creates Expand's virtual display at exactly that size and refresh rate, prints
+// "ready <display id>", and keeps it until the Expand app goes away (its stdin closes) or
 // this process is stopped. The display disappears with the process.
 
 import CoreGraphics
@@ -11,13 +11,13 @@ let args = CommandLine.arguments
 guard args.count == 4, let width = UInt32(args[1]), let height = UInt32(args[2]), let fps = Double(args[3]),
     width >= 320, height >= 240, fps >= 10
 else {
-    FileHandle.standardError.write("usage: sidescreen-display WIDTH HEIGHT FPS\n".data(using: .utf8)!)
+    FileHandle.standardError.write("usage: expand-display WIDTH HEIGHT FPS\n".data(using: .utf8)!)
     exit(2)
 }
 
 let descriptor = CGVirtualDisplayDescriptor()
 descriptor.queue = DispatchQueue.main
-descriptor.name = "Sidescreen"
+descriptor.name = "Expand"
 descriptor.maxPixelsWide = width
 descriptor.maxPixelsHigh = height
 // A physical size like a desktop monitor's (about 110 pixels per inch), so macOS picks normal

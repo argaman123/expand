@@ -1,4 +1,4 @@
-//! The Sidescreen app: a small window and tray icon over `sidescreen_core`.
+//! The Expand app: a small window and tray icon over `expand_core`.
 //! Windows builds are the client (the PC that shows the display); macOS builds are the host.
 
 mod appearance;
@@ -13,10 +13,10 @@ mod macmenu;
 mod panel;
 
 use serde::{Deserialize, Serialize};
-use sidescreen_core::config::{Config, Peer, Placement, StreamSettings, WindowMode};
-use sidescreen_core::side::Side;
-use sidescreen_core::mouse::MouseManager;
-use sidescreen_core::session::State;
+use expand_core::config::{Config, Peer, Placement, StreamSettings, WindowMode};
+use expand_core::side::Side;
+use expand_core::mouse::MouseManager;
+use expand_core::session::State;
 use state::{AppState, PairingDto, StatusDto, ROLE};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -61,8 +61,8 @@ struct FoundDto {
     pairing: bool,
 }
 
-impl From<sidescreen_core::discovery::Found> for FoundDto {
-    fn from(f: sidescreen_core::discovery::Found) -> FoundDto {
+impl From<expand_core::discovery::Found> for FoundDto {
+    fn from(f: expand_core::discovery::Found) -> FoundDto {
         FoundDto { name: f.name, host: f.host, id: f.id, pairing: f.pairing }
     }
 }
@@ -92,6 +92,7 @@ fn display_stop(app: AppHandle, shared: tauri::State<'_, Shared>) {
     display::close(&app);
     #[cfg(not(windows))]
     let _ = app;
+    shared.call_off_comeback();
     shared.cancel_session();
 }
 
@@ -110,7 +111,7 @@ fn disconnect(shared: tauri::State<'_, Shared>) {
 /// Brings the connection to the Mac up: the chosen one (or the current one), pairing with `code`
 /// first when one is typed or there is no pairing yet. The display is not started.
 async fn connect_to(app: &AppHandle, shared: &Shared, key: Option<String>, code: Option<String>) -> Result<(), String> {
-    shared.connect_to(key.as_deref(), code.as_deref(), sidescreen_core::link::CONTROL_PORT).await?;
+    shared.connect_to(key.as_deref(), code.as_deref(), expand_core::link::CONTROL_PORT).await?;
     asked_to_connect(app, shared).await;
     Ok(())
 }
@@ -122,7 +123,7 @@ async fn asked_to_connect(app: &AppHandle, shared: &Shared) {
     sync_mouse(app).await;
     if ROLE == "client" && shared.starts_display_now(&shared.mouse_status()) {
         if let Err(e) = start_display(app, shared) {
-            eprintln!("sidescreen: the display did not start on connect: {e}");
+            eprintln!("expand: the display did not start on connect: {e}");
         }
     }
 }
@@ -132,7 +133,7 @@ async fn asked_to_connect(app: &AppHandle, shared: &Shared) {
 /// taken it is logged and tried again every 10 seconds.
 #[cfg(windows)]
 async fn listen_for_connect_requests(app: AppHandle, shared: Shared) {
-    use sidescreen_core::link::request::{serve_requests, REQUEST_PORT};
+    use expand_core::link::request::{serve_requests, REQUEST_PORT};
     loop {
         let token_shared = shared.clone();
         let (ok_app, ok_shared) = (app.clone(), shared.clone());
@@ -177,7 +178,7 @@ async fn connect_mac(
 async fn reconnect_mac(app: AppHandle, shared: tauri::State<'_, Shared>) -> Result<(), String> {
     // Checked first (a Mac is chosen and paired), so a refusal leaves the link as it was; this
     // also keeps the connection wanted, so the restart below brings it back up.
-    shared.connect_to(None, None, sidescreen_core::link::CONTROL_PORT).await?;
+    shared.connect_to(None, None, expand_core::link::CONTROL_PORT).await?;
     stop_mouse(&app).await;
     sync_mouse(&app).await;
     Ok(())
@@ -238,11 +239,11 @@ struct Release {
 async fn check_update() -> Result<UpdateDto, String> {
     let current = env!("CARGO_PKG_VERSION").to_string();
     let release: Release = reqwest::Client::builder()
-        .user_agent("Sidescreen")
+        .user_agent("Expand")
         .timeout(Duration::from_secs(10))
         .build()
         .map_err(|e| e.to_string())?
-        .get("https://api.github.com/repos/argaman123/sidescreen/releases/latest")
+        .get("https://api.github.com/repos/argaman123/expand/releases/latest")
         .send()
         .await
         .and_then(|r| r.error_for_status())
@@ -333,7 +334,7 @@ async fn install_update(app: AppHandle) -> Result<(), String> {
     installed
 }
 
-const OPENABLE_PREFIX: &str = "https://github.com/argaman123/sidescreen/";
+const OPENABLE_PREFIX: &str = "https://github.com/argaman123/expand/";
 
 /// Only the project's own GitHub pages may be handed to the system browser.
 fn url_is_openable(url: &str) -> bool {
@@ -370,7 +371,7 @@ fn open_url(url: String) -> Result<(), String> {
 #[tauri::command]
 async fn add_mac_by_address(app: AppHandle, shared: tauri::State<'_, Shared>, host: String, code: String) -> Result<(), String> {
     // Saved only once it has paired.
-    shared.add_mac_by_address(&host, &code, sidescreen_core::link::CONTROL_PORT).await?;
+    shared.add_mac_by_address(&host, &code, expand_core::link::CONTROL_PORT).await?;
     asked_to_connect(&app, shared.inner()).await;
     Ok(())
 }
@@ -385,6 +386,7 @@ async fn disconnect_mac(app: AppHandle, shared: tauri::State<'_, Shared>) -> Res
 async fn disconnect_all(app: &AppHandle, shared: &Shared) {
     shared.set_want_connection(false);
     shared.ask_connect(false);
+    shared.call_off_comeback();
     shared.cancel_session();
     // Stopping the engine tells the Mac goodbye.
     stop_mouse(app).await;
@@ -410,13 +412,13 @@ async fn forget_mac(app: AppHandle, shared: tauri::State<'_, Shared>, key: Strin
 
 #[tauri::command]
 async fn find_mac() -> Option<FoundDto> {
-    sidescreen_core::discovery::find_first(Duration::from_secs(3)).await.map(FoundDto::from)
+    expand_core::discovery::find_first(Duration::from_secs(3)).await.map(FoundDto::from)
 }
 
-/// Every Sidescreen Mac on the network, once each, and whether it is showing its pairing code.
+/// Every Expand Mac on the network, once each, and whether it is showing its pairing code.
 #[tauri::command]
 async fn find_macs() -> Vec<FoundDto> {
-    sidescreen_core::discovery::find_all(Duration::from_secs(3)).await.into_iter().map(FoundDto::from).collect()
+    expand_core::discovery::find_all(Duration::from_secs(3)).await.into_iter().map(FoundDto::from).collect()
 }
 
 // ---- the Mac: pairing mode and the PCs it knows ----
@@ -454,7 +456,7 @@ fn cut_pc(shared: &AppState, key: Option<&str>) {
     shared.cut_when_back(&target, now);
     #[cfg(target_os = "macos")]
     if connected.as_deref() == Some(target.as_str()) {
-        let _ = shared.mac_commands.1.send(sidescreen_core::share::mac::MacCommand::Disconnect);
+        let _ = shared.mac_commands.1.send(expand_core::share::mac::MacCommand::Disconnect);
     }
 }
 
@@ -488,7 +490,7 @@ fn restart_pc(shared: tauri::State<'_, Shared>) -> Result<(), String> {
         shared
             .mac_commands
             .1
-            .send(sidescreen_core::share::mac::MacCommand::Restart)
+            .send(expand_core::share::mac::MacCommand::Restart)
             .map_err(|_| "mouse sharing is not running".to_string())?;
         shared.note_restart(&pc, std::time::Instant::now());
         Ok(())
@@ -524,7 +526,7 @@ async fn connect_pc(shared: tauri::State<'_, Shared>, key: String) -> Result<(),
         Some(_) => cut_pc(&shared, None),
         None => {}
     }
-    match sidescreen_core::link::request::ask_to_connect(&addrs, &my_id, &pc.token).await {
+    match expand_core::link::request::ask_to_connect(&addrs, &my_id, &pc.token).await {
         Ok(true) => Ok(()),
         Ok(false) => Err("that PC did not accept the request".to_string()),
         Err(e) => Err(format!("cannot reach that PC: {e}")),
@@ -645,7 +647,7 @@ struct MonitorDto {
 #[tauri::command]
 fn get_monitors() -> Vec<MonitorDto> {
     #[cfg(windows)]
-    return sidescreen_core::layout::numbered_monitors(&sidescreen_core::winwindow::monitors())
+    return expand_core::layout::numbered_monitors(&expand_core::winwindow::monitors())
         .into_iter()
         .map(|(number, m)| MonitorDto { number, left: m.left, top: m.top, right: m.right, bottom: m.bottom })
         .collect();
@@ -689,6 +691,12 @@ async fn set_reverse_scroll(app: AppHandle, shared: tauri::State<'_, Shared>, en
     shared.set_reverse_scroll(enabled)?;
     sync_mouse(&app).await;
     Ok(())
+}
+
+/// PC: the Mac's sound plays on the PC, from the display's next start.
+#[tauri::command]
+fn set_mac_sound(shared: tauri::State<'_, Shared>, enabled: bool) -> Result<(), String> {
+    shared.set_mac_sound(enabled)
 }
 
 /// PC: the display starts whenever the connection to the Mac comes up.
@@ -774,7 +782,7 @@ async fn sync_mouse(app: &AppHandle) {
     match shared.connection_role() {
         Some(role) => manager.start(role).await,
         // A refusal stays on show until the user acts; stopping would wipe it.
-        None if matches!(manager.status(), sidescreen_core::mouse::MouseStatus::Ended(_)) && !shared.want_connection() => {}
+        None if matches!(manager.status(), expand_core::mouse::MouseStatus::Ended(_)) && !shared.want_connection() => {}
         None => manager.stop().await,
     }
     shared.set_mouse_status(manager.status());
@@ -836,7 +844,7 @@ fn fall_back_to_tray(app: &AppHandle) {
         }
         let shared = handle.state::<Shared>().inner().clone();
         if let Err(e) = build_tray(&handle, &shared) {
-            eprintln!("sidescreen: the menu-bar menu could not be built: {e}");
+            eprintln!("expand: the menu-bar menu could not be built: {e}");
         }
     });
 }
@@ -851,9 +859,9 @@ fn show_window(app: &AppHandle) {
 
 mod client {
     use super::*;
-    use sidescreen_core::link::CONTROL_PORT;
-    use sidescreen_core::session::client::run;
-    use sidescreen_core::session::engines::RealViewer;
+    use expand_core::link::CONTROL_PORT;
+    use expand_core::session::client::run;
+    use expand_core::session::engines::RealViewer;
     use std::net::{IpAddr, SocketAddr};
 
     /// Starts a session unless one is already running.
@@ -904,7 +912,7 @@ mod client {
                         let app = pairing_app.clone();
                         tauri::async_runtime::spawn(async move { sync_mouse(&app).await });
                     };
-                    if let Some(peer) = run(addrs, &cfg, &mut viewer, &shared.state, cancel, &save_now, None).await {
+                    if let Some(peer) = run(addrs, &cfg, &mut viewer, &shared.state, cancel.clone(), &save_now, None).await {
                         // Only onto the entry if it is still there, and never changing which
                         // Mac is current (the user may have switched or forgotten it meanwhile).
                         shared.write_back_session(&old_key2, &peer);
@@ -918,8 +926,15 @@ mod client {
             #[cfg(windows)]
             display::finish(&app, matches!(*shared.state.borrow(), State::Failed { .. }));
             shared.end_session();
+            let comeback = shared.display_ended(cancel.is_cancelled(), &shared.mouse_status());
             sync_mouse(&app).await;
             announce(&app, &shared);
+            if comeback == crate::state::Comeback::Now {
+                eprintln!("expand: the connection came back under the display; it starts again");
+                if let Err(e) = start_display(&app, &shared) {
+                    eprintln!("expand: the display did not come back: {e}");
+                }
+            }
         });
         Ok(())
     }
@@ -928,11 +943,11 @@ mod client {
 #[cfg(target_os = "macos")]
 mod host {
     use super::*;
-    use sidescreen_core::discovery;
-    use sidescreen_core::link::{server::Server, CONTROL_PORT};
-    use sidescreen_core::session::engines::{cleanup_orphans, RealHostEngines};
-    use sidescreen_core::session::host::serve_gated;
-    use sidescreen_core::session::HostEngines;
+    use expand_core::discovery;
+    use expand_core::link::{server::Server, CONTROL_PORT};
+    use expand_core::session::engines::{cleanup_orphans, RealHostEngines};
+    use expand_core::session::host::serve_gated;
+    use expand_core::session::HostEngines;
     use state::PairingGate;
     use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -971,7 +986,7 @@ mod host {
         let mut server = match Server::bind(([0, 0, 0, 0], CONTROL_PORT).into()).await {
             Ok(server) => server,
             Err(e) => {
-                let reason = format!("cannot listen for the PC (is Sidescreen already open?): {e}");
+                let reason = format!("cannot listen for the PC (is Expand already open?): {e}");
                 shared.state.send_replace(State::Failed { part: "Mac app".to_string(), reason });
                 return;
             }
@@ -981,7 +996,7 @@ mod host {
             (cfg.device_name.clone(), cfg.device_id.clone())
         };
         let presence = tokio::spawn(announce_presence(app.clone(), shared.clone(), name.clone(), id.clone()));
-        let gate: Arc<dyn sidescreen_core::link::PairGate> = Arc::new(PairingGate(shared.clone()));
+        let gate: Arc<dyn expand_core::link::PairGate> = Arc::new(PairingGate(shared.clone()));
         let mut serving = tokio::task::JoinSet::new();
 
         // An earlier run that crashed or was force-quit may have left its engines behind.
@@ -1010,7 +1025,7 @@ mod host {
             if let Some(peer) = new_peer {
                 // The stream host's own pairing is never touched here: it goes with the last PC.
                 if let Err(e) = shared.pair_pc(peer) {
-                    eprintln!("sidescreen: a PC paired, but it could not be saved: {e}");
+                    eprintln!("expand: a PC paired, but it could not be saved: {e}");
                 }
                 // Mouse sharing now answers this PC.
                 let app = app.clone();
@@ -1080,7 +1095,7 @@ fn build_tray(app: &AppHandle, shared: &Shared) -> tauri::Result<()> {
 
     let for_menu = shared.clone();
     let mut tray = TrayIconBuilder::with_id("main")
-        .tooltip("Sidescreen")
+        .tooltip("Expand")
         .menu(&menu)
         .show_menu_on_left_click(ROLE == "host")
         .on_menu_event(move |app, event| match event.id.as_ref() {
@@ -1228,7 +1243,7 @@ fn tray_failed(app: &AppHandle, shared: &Shared, result: Result<(), String>) {
 /// The PC's tray menu.
 fn client_menu(app: &AppHandle, status: &StatusDto) -> tauri::Result<Menu<tauri::Wry>> {
     use tauri::menu::{CheckMenuItem, IsMenuItem, PredefinedMenuItem};
-    let open = MenuItem::with_id(app, "open", "Open Sidescreen", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", "Open Expand", true, None::<&str>)?;
     let actions = state::client_tray_actions(status);
     let toggles = actions
         .iter()
@@ -1239,7 +1254,7 @@ fn client_menu(app: &AppHandle, status: &StatusDto) -> tauri::Result<Menu<tauri:
         .filter(|a| a.checked.is_none())
         .map(|a| MenuItem::with_id(app, a.id, a.label, a.enabled, None::<&str>))
         .collect::<tauri::Result<Vec<_>>>()?;
-    let quit = MenuItem::with_id(app, "quit", "Quit Sidescreen", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit Expand", true, None::<&str>)?;
     let lines = [PredefinedMenuItem::separator(app)?, PredefinedMenuItem::separator(app)?, PredefinedMenuItem::separator(app)?];
     let mut items: Vec<&dyn IsMenuItem<tauri::Wry>> = vec![&open, &lines[0]];
     items.extend(toggles.iter().map(|t| t as &dyn IsMenuItem<tauri::Wry>));
@@ -1307,10 +1322,10 @@ fn wind_down(app: &AppHandle) {
 
 pub fn run() {
     // Only the running app keeps sharing.log; tests leave the owner's log alone.
-    sidescreen_core::sharelog::enable();
+    expand_core::sharelog::enable();
     let path = Config::default_path();
     // The Mac does not trust the id a 1.0 settings file kept for its PC (see `Config::load_as`).
-    let role = if ROLE == "host" { sidescreen_core::config::Role::Mac } else { sidescreen_core::config::Role::Pc };
+    let role = if ROLE == "host" { expand_core::config::Role::Mac } else { expand_core::config::Role::Pc };
     let shared: Shared = Arc::new(match Config::load_as(&path, role) {
         Ok(cfg) => {
             // Make sure the file exists so the device ID stays the same across launches.
@@ -1368,6 +1383,7 @@ pub fn run() {
             set_language_follow,
             set_ctrl_as_cmd,
             set_reverse_scroll,
+            set_mac_sound,
             set_start_display_on_connect,
             get_monitors,
             close_window,
@@ -1445,26 +1461,36 @@ pub fn run() {
                 // The engine may have moved on (to Connected) before this subscription existed:
                 // take the current value first, or the window keeps showing a stale state.
                 rx.mark_changed();
+                let mut was_connected = false;
                 while rx.changed().await.is_ok() {
                     let status = rx.borrow().clone();
                     let back = match &status {
-                        sidescreen_core::mouse::MouseStatus::Connected { mac_id, .. } => Some(mac_id.clone()),
+                        expand_core::mouse::MouseStatus::Connected { mac_id, .. } => Some(mac_id.clone()),
                         _ => None,
                     };
                     // The display starts as a connection the user asked for comes up, when the user
                     // wants that.
                     let start = ROLE == "client" && mouse_shared.starts_display_now(&status);
+                    // A display that ended by itself (the Mac slept, or left the network) comes
+                    // back as the connection does.
+                    let comeback = ROLE == "client" && mouse_shared.resumes_display_now(was_connected, &status);
+                    was_connected = matches!(status, expand_core::mouse::MouseStatus::Connected { .. });
                     // The Mac: the connected PC's Ctrl as ⌘, for typing into the display window
                     // (kept through a sharing reconnect).
                     #[cfg(target_os = "macos")]
-                    if let Some(on) = sidescreen_core::keys_stream::setting_in(&status) {
-                        sidescreen_core::keys_stream::follow_setting(on);
+                    if let Some(on) = expand_core::keys_stream::setting_in(&status) {
+                        expand_core::keys_stream::follow_setting(on);
                     }
                     mouse_shared.set_mouse_status(status);
-                    if start {
-                        eprintln!("sidescreen: connected; the display starts (start the display when connected)");
+                    if comeback {
+                        eprintln!("expand: the connection is back; so is the display");
                         if let Err(e) = start_display(&mouse_app, &mouse_shared) {
-                            eprintln!("sidescreen: the display did not start on connect: {e}");
+                            eprintln!("expand: the display did not come back: {e}");
+                        }
+                    } else if start {
+                        eprintln!("expand: connected; the display starts (start the display when connected)");
+                        if let Err(e) = start_display(&mouse_app, &mouse_shared) {
+                            eprintln!("expand: the display did not start on connect: {e}");
                         }
                     }
                     // A Disconnect pressed while this PC was restarting is carried out now.
@@ -1535,7 +1561,7 @@ pub fn run() {
             Ok(())
         })
         .build(tauri::generate_context!())
-        .expect("error while building the Sidescreen app");
+        .expect("error while building the Expand app");
 
     app.run(|app, event| {
         if let RunEvent::Exit = event {
@@ -1550,16 +1576,16 @@ mod open_url_tests {
 
     #[test]
     fn only_the_projects_github_pages_open() {
-        assert!(url_is_openable("https://github.com/argaman123/sidescreen/releases/tag/v1.2.0"));
-        assert!(!url_is_openable("https://github.com/argaman123/sidescreen"));
-        assert!(!url_is_openable("https://github.com/argaman123/sidescreen-evil/x"));
-        assert!(!url_is_openable("https://github.com/other/sidescreen/"));
-        assert!(!url_is_openable("http://github.com/argaman123/sidescreen/"));
-        assert!(!url_is_openable("https://evil.example/https://github.com/argaman123/sidescreen/"));
-        assert!(!url_is_openable("https://github.com/argaman123/sidescreen/../x"));
+        assert!(url_is_openable("https://github.com/argaman123/expand/releases/tag/v1.2.0"));
+        assert!(!url_is_openable("https://github.com/argaman123/expand"));
+        assert!(!url_is_openable("https://github.com/argaman123/expand-evil/x"));
+        assert!(!url_is_openable("https://github.com/other/expand/"));
+        assert!(!url_is_openable("http://github.com/argaman123/expand/"));
+        assert!(!url_is_openable("https://evil.example/https://github.com/argaman123/expand/"));
+        assert!(!url_is_openable("https://github.com/argaman123/expand/../x"));
         assert!(!url_is_openable("file:///C:/Windows/System32/calc.exe"));
-        assert!(!url_is_openable("https://github.com/argaman123/sidescreen/ & calc"));
-        assert!(!url_is_openable("https://github.com/argaman123/sidescreen/a&b"));
+        assert!(!url_is_openable("https://github.com/argaman123/expand/ & calc"));
+        assert!(!url_is_openable("https://github.com/argaman123/expand/a&b"));
     }
 }
 
@@ -1571,7 +1597,7 @@ mod update_tests {
 
     #[test]
     fn a_versions_release_page_can_be_opened() {
-        assert_eq!(release_page("1.2.0"), "https://github.com/argaman123/sidescreen/releases/tag/v1.2.0");
+        assert_eq!(release_page("1.2.0"), "https://github.com/argaman123/expand/releases/tag/v1.2.0");
         assert_eq!(release_page("v1.2.0"), release_page("1.2.0"));
         assert!(url_is_openable(&release_page("1.2.0")));
     }

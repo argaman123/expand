@@ -3,8 +3,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { Monitor, Placement } from "../api";
 import { heatFor, type ScreenRect } from "./geometry";
 
-/** The Mac's light follows where the window is (geometry.ts heatFor): sets `--ss-heat` (0..1) and
- *  `--ss-along` (a percentage along the side it comes in from) on the given elements. Updated on
+/** The Mac's light follows where the window is (geometry.ts heatFor): sets `--ex-heat` (0..1) and
+ *  `--ex-along` (a percentage along the side it comes in from) on the given elements. Updated on
  *  the window's move, resize and scale-change events and on a change of monitors or placement,
  *  never on a timer; outside React's renders, so a drag re-renders nothing (the CSS eases it).
  *  While `on` is false, or without the window's place (an error), the variables are unset and the
@@ -24,9 +24,9 @@ export function useHeat(targets: RefObject<HTMLElement | null>[], monitors: Moni
       if (!el) continue;
       // Not connected (or not known): unset, so the light falls back to how it was before it knew
       // (connecting keeps its dim light) and the window-side light stays off.
-      if (!on) el.style.removeProperty("--ss-heat");
-      else el.style.setProperty("--ss-heat", heat ? heat.strength.toFixed(3) : "0");
-      if (heat) el.style.setProperty("--ss-along", `${(heat.along * 100).toFixed(1)}%`);
+      if (!on) el.style.removeProperty("--ex-heat");
+      else el.style.setProperty("--ex-heat", heat ? heat.strength.toFixed(3) : "0");
+      if (heat) el.style.setProperty("--ex-along", `${(heat.along * 100).toFixed(1)}%`);
     }
   }).current;
 

@@ -314,7 +314,7 @@ mod tests {
 
     #[test]
     fn paired_clients_are_detected() {
-        let some = serde_json::json!({"named_certs": [{"name": "Sidescreen PC", "uuid": "x"}], "status": true});
+        let some = serde_json::json!({"named_certs": [{"name": "Expand PC", "uuid": "x"}], "status": true});
         let none = serde_json::json!({"named_certs": [], "status": true});
         assert!(has_paired_client(&some));
         assert!(!has_paired_client(&none));

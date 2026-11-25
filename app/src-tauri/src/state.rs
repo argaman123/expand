@@ -1,11 +1,11 @@
 //! What the app remembers while running, kept free of window code so it can be tested.
 
 use serde::Serialize;
-use sidescreen_core::config::{Config, Peer, Placement, StreamSettings, WindowMode};
-use sidescreen_core::side::Side;
-use sidescreen_core::mouse::{EndReason, MouseRole, MouseStatus, Uses};
-use sidescreen_core::share::admit::KnownPc;
-use sidescreen_core::session::State;
+use expand_core::config::{Config, Peer, Placement, StreamSettings, WindowMode};
+use expand_core::side::Side;
+use expand_core::mouse::{EndReason, MouseRole, MouseStatus, Uses};
+use expand_core::share::admit::KnownPc;
+use expand_core::session::State;
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
@@ -68,6 +68,8 @@ pub struct StatusDto {
     pub ctrl_as_cmd: bool,
     /// PC: the wheel scrolls the Mac the other way round (sharing and the display).
     pub reverse_scroll: bool,
+    /// PC: the Mac's sound plays on the PC while the display runs.
+    pub mac_sound: bool,
     /// Other addresses the Mac reported (Tailscale, a cable link, another network).
     pub peer_addresses: Vec<String>,
     /// PC side: the smoothed round trip to the connected Mac, in ms.
@@ -87,10 +89,21 @@ pub fn starts_display_on_connect(asked: bool, now: &MouseStatus, enabled: bool, 
     asked && matches!(now, MouseStatus::Connected { .. }) && enabled && !running
 }
 
+/// What happens to a display that ended ([`AppState::display_ended`]): closed by the user it stays
+/// closed. Ended by itself, it comes back with the connection to the Mac (the Mac slept or left
+/// the network), at once when the connection is back already. On a connection that never
+/// dropped it shows why it ended, with Retry, instead of starting over and over.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Comeback {
+    No,
+    Now,
+    WhenConnected,
+}
+
 /// Admits a PC only while pairing mode is open and it proves it has the code.
 pub struct PairingGate(pub Arc<AppState>);
 
-impl sidescreen_core::link::PairGate for PairingGate {
+impl expand_core::link::PairGate for PairingGate {
     fn code(&self) -> Option<String> {
         self.0.pairing_code_at(Instant::now())
     }
@@ -143,13 +156,13 @@ pub struct SizeTracking<'a, E> {
 }
 
 #[async_trait::async_trait]
-impl<E: sidescreen_core::session::HostEngines> sidescreen_core::session::HostEngines for SizeTracking<'_, E> {
-    async fn start(&mut self, width: u32, height: u32, fps: u32) -> Result<(), sidescreen_core::sunshine::EngineError> {
+impl<E: expand_core::session::HostEngines> expand_core::session::HostEngines for SizeTracking<'_, E> {
+    async fn start(&mut self, width: u32, height: u32, fps: u32) -> Result<(), expand_core::sunshine::EngineError> {
         let result = self.inner.start(width, height, fps).await;
         self.state.set_display_size(result.is_ok().then_some(DisplayDto { width, height, fps }));
         result
     }
-    async fn submit_pin(&mut self, pin: &str, client_name: &str) -> Result<bool, sidescreen_core::sunshine::EngineError> {
+    async fn submit_pin(&mut self, pin: &str, client_name: &str) -> Result<bool, expand_core::sunshine::EngineError> {
         self.inner.submit_pin(pin, client_name).await
     }
     async fn stop(&mut self) {
@@ -185,9 +198,9 @@ pub struct PairingDto {
 /// The tray's tooltip: the display's state, and mouse sharing whenever it is on.
 pub fn tray_text(state: &str, mouse_state: &str) -> String {
     match mouse_state {
-        "running" => format!("Sidescreen: {state} · mouse sharing on"),
-        "failed" => format!("Sidescreen: {state} · mouse sharing not working"),
-        _ => format!("Sidescreen: {state}"),
+        "running" => format!("Expand: {state} · mouse sharing on"),
+        "failed" => format!("Expand: {state} · mouse sharing not working"),
+        _ => format!("Expand: {state}"),
     }
 }
 
@@ -238,6 +251,10 @@ pub struct AppState {
     /// The user asked to connect, and the connection has not come up for it yet (for "start the
     /// display when connected").
     connect_asked: AtomicBool,
+    /// The connection to the Mac dropped while the running display was up.
+    dropped_under_display: AtomicBool,
+    /// A display that ended by itself waits to come back with the connection.
+    comeback: AtomicBool,
     /// The pairing code the Mac is showing and when it stops working (Mac side).
     pairing: Mutex<Option<(String, Instant)>>,
     pairing_signal: watch::Sender<u64>,
@@ -339,12 +356,12 @@ pub fn known_pcs(cfg: &Config) -> Vec<KnownPc> {
 }
 
 /// The PC calling as `id`, by the rule the sharing server uses
-/// ([`sidescreen_core::share::admit::entry`]): the entry with that id, or else the single paired
+/// ([`expand_core::share::admit::entry`]): the entry with that id, or else the single paired
 /// entry without one (a PC migrated from 1.0), given the caller's id. It must still prove itself
 /// with that entry's token.
 pub fn known_pc(cfg: &Config, id: &str) -> Option<Peer> {
     let pcs = known_pcs(cfg);
-    let (found, token, ..) = sidescreen_core::share::admit::entry(&pcs, id)?;
+    let (found, token, ..) = expand_core::share::admit::entry(&pcs, id)?;
     // Only paired entries are in `pcs`: one without a token proves nothing, by id or not.
     let pc = cfg.peers.iter().find(|p| &p.id == found && &p.token == token)?;
     Some(Peer { id: id.to_string(), ..pc.clone() })
@@ -353,8 +370,8 @@ pub fn known_pc(cfg: &Config, id: &str) -> Option<Peer> {
 /// The sender the app uses and the receiver the Mac's server takes when it starts.
 #[cfg(target_os = "macos")]
 pub struct MacCommands(
-    pub std::sync::Arc<Mutex<Option<tokio::sync::mpsc::UnboundedReceiver<sidescreen_core::share::mac::MacCommand>>>>,
-    pub tokio::sync::mpsc::UnboundedSender<sidescreen_core::share::mac::MacCommand>,
+    pub std::sync::Arc<Mutex<Option<tokio::sync::mpsc::UnboundedReceiver<expand_core::share::mac::MacCommand>>>>,
+    pub tokio::sync::mpsc::UnboundedSender<expand_core::share::mac::MacCommand>,
 );
 
 #[cfg(target_os = "macos")]
@@ -368,7 +385,7 @@ impl Default for MacCommands {
 /// The number of the monitor the Mac display opens on, as the viewer window picks it (Windows only).
 #[cfg(windows)]
 fn viewer_monitor_number(peer: Option<&Peer>) -> Option<u32> {
-    use sidescreen_core::{layout, winwindow};
+    use expand_core::{layout, winwindow};
     let peer = peer?;
     let monitors = winwindow::monitors();
     let area = layout::viewer_monitor(&monitors, peer.stream.monitor, &peer.placement)?;
@@ -380,12 +397,18 @@ fn viewer_monitor_number(_peer: Option<&Peer>) -> Option<u32> {
     None
 }
 
+fn prefs_of(cfg: &Config) -> expand_core::moonlight::Prefs {
+    expand_core::moonlight::Prefs { reverse_scroll: cfg.reverse_scroll, sound_here: cfg.mac_sound }
+}
+
 impl AppState {
     pub fn new(cfg: Config, path: PathBuf, config_error: Option<String>) -> AppState {
-        sidescreen_core::moonlight::set_reverse_scroll(cfg.reverse_scroll);
+        expand_core::moonlight::set_prefs(prefs_of(&cfg));
         AppState {
             want_connection: AtomicBool::new(cfg.auto_connect),
             connect_asked: AtomicBool::new(false),
+            dropped_under_display: AtomicBool::new(false),
+            comeback: AtomicBool::new(false),
             path,
             state: watch::channel(State::Disconnected).0,
             active: Mutex::new(None),
@@ -415,7 +438,38 @@ impl AppState {
         }
         let token = CancellationToken::new();
         *active = Some(token.clone());
+        self.dropped_under_display.store(false, Ordering::SeqCst);
+        self.comeback.store(false, Ordering::SeqCst);
         Some(token)
+    }
+
+    /// The display ended, `stopped` by the user (or a restart) or by itself, with the connection
+    /// to the Mac `now`: whether it comes back, and when ([`Comeback`]).
+    pub fn display_ended(&self, stopped: bool, now: &MouseStatus) -> Comeback {
+        let dropped = self.dropped_under_display.swap(false, Ordering::SeqCst);
+        let up = matches!(now, MouseStatus::Connected { .. });
+        let comeback = match (stopped, up, dropped) {
+            (true, _, _) => Comeback::No,
+            (false, true, true) => Comeback::Now,
+            (false, true, false) => Comeback::No,
+            (false, false, _) => Comeback::WhenConnected,
+        };
+        self.comeback.store(comeback == Comeback::WhenConnected, Ordering::SeqCst);
+        comeback
+    }
+
+    /// Whether a display waiting to come back starts now: the connection has just come back
+    /// (`was_connected` says it was not up before `now`), and no display runs. Once.
+    pub fn resumes_display_now(&self, was_connected: bool, now: &MouseStatus) -> bool {
+        if was_connected || !matches!(now, MouseStatus::Connected { .. }) || self.has_session() {
+            return false;
+        }
+        self.comeback.swap(false, Ordering::SeqCst)
+    }
+
+    /// The user closed the display (or disconnected): nothing brings it back.
+    pub fn call_off_comeback(&self) {
+        self.comeback.store(false, Ordering::SeqCst);
     }
 
     pub fn end_session(&self) {
@@ -546,11 +600,23 @@ impl AppState {
         self.update(|cfg| cfg.ctrl_as_cmd = enabled)
     }
 
-    /// The next display started follows too (`moonlight::set_reverse_scroll`).
+    /// The next display started follows too ([`stream_prefs`](Self::stream_prefs)).
     pub fn set_reverse_scroll(&self, enabled: bool) -> Result<(), String> {
         self.update(|cfg| cfg.reverse_scroll = enabled)?;
-        sidescreen_core::moonlight::set_reverse_scroll(enabled);
+        expand_core::moonlight::set_prefs(self.stream_prefs());
         Ok(())
+    }
+
+    /// From the next display started ([`stream_prefs`](Self::stream_prefs)).
+    pub fn set_mac_sound(&self, enabled: bool) -> Result<(), String> {
+        self.update(|cfg| cfg.mac_sound = enabled)?;
+        expand_core::moonlight::set_prefs(self.stream_prefs());
+        Ok(())
+    }
+
+    /// What the next display starts with, from the settings.
+    pub fn stream_prefs(&self) -> expand_core::moonlight::Prefs {
+        prefs_of(&self.cfg.lock().unwrap())
     }
 
     pub fn set_start_display_on_connect(&self, enabled: bool) -> Result<(), String> {
@@ -660,9 +726,9 @@ impl AppState {
             (cfg.device_name.clone(), cfg.device_id.clone())
         };
         let (mut conn, new_peer, _) =
-            sidescreen_core::link::client::connect(&addrs, &name, &id, None, Some(code)).await.map_err(|e| e.to_string())?;
+            expand_core::link::client::connect(&addrs, &name, &id, None, Some(code)).await.map_err(|e| e.to_string())?;
         // Nothing more is wanted from this connection.
-        let _ = conn.send(sidescreen_core::protocol::Message::Stop).await;
+        let _ = conn.send(expand_core::protocol::Message::Stop).await;
         new_peer.ok_or_else(|| "the Mac did not pair".to_string())
     }
 
@@ -934,6 +1000,9 @@ impl AppState {
     }
 
     pub fn set_mouse_status(&self, status: MouseStatus) {
+        if matches!(status, MouseStatus::Lost(_) | MouseStatus::Connecting) && self.has_session() {
+            self.dropped_under_display.store(true, Ordering::SeqCst);
+        }
         match &status {
             // Ended for good: nothing may start it again until the user connects.
             MouseStatus::Ended(_) => self.set_want_connection(false),
@@ -963,8 +1032,8 @@ impl AppState {
             if !known_pcs(&cfg).iter().any(|p| p.2) {
                 return None;
             }
-            return Some(MouseRole::Mac(sidescreen_core::share::mac::MacSettings {
-                me: sidescreen_core::share::channel::MacIdentity { id: cfg.device_id.clone(), name: cfg.device_name.clone() },
+            return Some(MouseRole::Mac(expand_core::share::mac::MacSettings {
+                me: expand_core::share::channel::MacIdentity { id: cfg.device_id.clone(), name: cfg.device_name.clone() },
                 pcs: self.mac_pcs.subscribe(),
                 commands: self.mac_commands.0.clone(),
             }));
@@ -975,14 +1044,14 @@ impl AppState {
                 return None;
             }
             let peer = cfg.current_peer().filter(|p| !p.token.is_empty())?;
-            return Some(MouseRole::Pc(sidescreen_core::share::pc::PcSettings {
+            return Some(MouseRole::Pc(expand_core::share::pc::PcSettings {
                 macs: Some(peer.candidates()).filter(|c| !c.is_empty())?,
                 my_id: cfg.device_id.clone(),
                 token: peer.token.clone(),
                 placement: peer.placement.clone(),
                 stream: (peer.stream.width, peer.stream.height),
                 // Mouse off stops everything on the connection, which itself stays up.
-                toggles: sidescreen_core::mouse::Toggles {
+                toggles: expand_core::mouse::Toggles {
                     mouse: cfg.mouse_sharing,
                     clipboard: cfg.mouse_sharing && cfg.clipboard_sharing,
                     language: cfg.mouse_sharing && cfg.language_follow,
@@ -1005,7 +1074,7 @@ impl AppState {
     }
 
     pub fn start_pairing_at(&self, now: Instant) -> String {
-        let code = sidescreen_core::auth::new_pair_code();
+        let code = expand_core::auth::new_pair_code();
         {
             // The count starts again with the new mode, under the lock the misses are counted
             // under, so an exchange ending meanwhile counts against one mode or the other.
@@ -1349,7 +1418,7 @@ impl AppState {
                     EndReason::Busy { by } => format!("the Mac is in use by {by}"),
                     EndReason::Blocked => "the Mac has blocked this PC".to_string(),
                     EndReason::Unknown => "the Mac does not know this PC".to_string(),
-                    EndReason::Version => "the other computer runs another version of Sidescreen; update it".to_string(),
+                    EndReason::Version => "the other computer runs another version of Expand; update it".to_string(),
                 }),
                 _ => None,
             },
@@ -1382,6 +1451,7 @@ impl AppState {
             start_display_on_connect: cfg.start_display_on_connect,
             ctrl_as_cmd: cfg.ctrl_as_cmd,
             reverse_scroll: cfg.reverse_scroll,
+            mac_sound: cfg.mac_sound,
             peer_addresses: peer.map(|p| p.addresses.clone()).unwrap_or_default(),
             latency_ms,
             viewer_monitor: viewer_monitor_number(peer),
@@ -1393,11 +1463,11 @@ impl AppState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sidescreen_core::config::{Config, StreamSettings, WindowMode};
+    use expand_core::config::{Config, StreamSettings, WindowMode};
     #[allow(unused_imports)] // only the PC's tests choose a side
-    use sidescreen_core::side::Side;
-    use sidescreen_core::mouse::MouseStatus;
-    use sidescreen_core::session::State;
+    use expand_core::side::Side;
+    use expand_core::mouse::MouseStatus;
+    use expand_core::session::State;
 
     fn app() -> (AppState, tempfile::TempDir) {
         let dir = tempfile::tempdir().unwrap();
@@ -1677,7 +1747,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn the_pc_shares_with_the_paired_mac_on_the_chosen_side() {
-        use sidescreen_core::mouse::MouseRole;
+        use expand_core::mouse::MouseRole;
         let (a, _d) = app();
         paired(&a);
         a.set_placement(Placement { side: Side::Top, monitor: None }).unwrap();
@@ -1692,7 +1762,7 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn the_mac_shares_with_the_trusted_pc() {
-        use sidescreen_core::mouse::MouseRole;
+        use expand_core::mouse::MouseRole;
         let (a, _d) = app();
         paired(&a);
         let MouseRole::Mac(s) = a.mouse_role().unwrap();
@@ -1703,7 +1773,7 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn the_mac_serves_paired_pcs_whichever_is_current() {
-        use sidescreen_core::mouse::MouseRole;
+        use expand_core::mouse::MouseRole;
         let (a, _d) = app();
         assert!(a.mouse_role().is_none(), "nobody is paired");
         paired(&a);
@@ -1820,16 +1890,16 @@ mod tests {
     // be visible, not a surprise.
     #[test]
     fn the_tray_says_when_mouse_sharing_is_on() {
-        assert_eq!(tray_text("disconnected", "running"), "Sidescreen: disconnected · mouse sharing on");
-        assert_eq!(tray_text("connected", "running"), "Sidescreen: connected · mouse sharing on");
-        assert_eq!(tray_text("disconnected", "off"), "Sidescreen: disconnected");
-        assert_eq!(tray_text("connected", "failed"), "Sidescreen: connected · mouse sharing not working");
+        assert_eq!(tray_text("disconnected", "running"), "Expand: disconnected · mouse sharing on");
+        assert_eq!(tray_text("connected", "running"), "Expand: connected · mouse sharing on");
+        assert_eq!(tray_text("disconnected", "off"), "Expand: disconnected");
+        assert_eq!(tray_text("connected", "failed"), "Expand: connected · mouse sharing not working");
     }
 
     #[cfg(windows)]
     #[test]
     fn clipboard_and_language_are_on_by_default_and_reach_sharing() {
-        use sidescreen_core::mouse::MouseRole;
+        use expand_core::mouse::MouseRole;
         let (a, _d) = app();
         paired(&a);
         let s = a.status();
@@ -1846,7 +1916,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn ctrl_as_cmd_is_on_by_default_and_reaches_sharing() {
-        use sidescreen_core::mouse::MouseRole;
+        use expand_core::mouse::MouseRole;
         let (a, _d) = app();
         paired(&a);
         assert!(a.status().ctrl_as_cmd);
@@ -1862,7 +1932,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn reverse_scroll_is_on_by_default_and_reaches_sharing() {
-        use sidescreen_core::mouse::MouseRole;
+        use expand_core::mouse::MouseRole;
         let (a, _d) = app();
         paired(&a);
         assert!(a.status().reverse_scroll);
@@ -1874,6 +1944,21 @@ mod tests {
         assert!(!a.status().reverse_scroll);
         assert!(!Config::load(&a.path).unwrap().reverse_scroll);
         a.set_reverse_scroll(true).unwrap();
+    }
+
+    /// Mac sound is on by default, is saved, and is what the next display starts with, as is
+    /// Reverse scrolling.
+    #[test]
+    fn mac_sound_is_on_by_default_and_reaches_the_next_display() {
+        use expand_core::moonlight::Prefs;
+        let (a, _d) = app();
+        assert!(a.status().mac_sound);
+        assert_eq!(a.stream_prefs(), Prefs { reverse_scroll: true, sound_here: true });
+        a.set_mac_sound(false).unwrap();
+        assert!(!a.status().mac_sound);
+        assert!(!Config::load(&a.path).unwrap().mac_sound);
+        a.set_reverse_scroll(false).unwrap();
+        assert_eq!(a.stream_prefs(), Prefs { reverse_scroll: false, sound_here: false });
     }
 
     fn connected() -> MouseStatus {
@@ -1922,7 +2007,7 @@ mod tests {
     fn a_refused_connection_drops_the_ask() {
         let (a, _d) = starting_on_connect();
         a.ask_connect(true);
-        let refused = MouseStatus::Ended(sidescreen_core::mouse::EndReason::Blocked);
+        let refused = MouseStatus::Ended(expand_core::mouse::EndReason::Blocked);
         assert_eq!(starts(&a, &[refused, connected()]), [false, false]);
     }
 
@@ -1958,9 +2043,67 @@ mod tests {
         assert_eq!(starts(&a, &[connected()]), [false]);
     }
 
+    /// The Mac slept (or left the network) under a running display: the display comes back,
+    /// once, as the connection does.
+    #[test]
+    fn a_display_that_ended_by_itself_comes_back_with_the_connection() {
+        let (a, _d) = app();
+        let _token = a.begin_session().unwrap();
+        a.set_mouse_status(lost());
+        a.end_session();
+        assert_eq!(a.display_ended(false, &lost()), Comeback::WhenConnected);
+        assert!(!a.resumes_display_now(false, &lost()), "not while the Mac is away");
+        assert!(a.resumes_display_now(false, &connected()));
+        assert!(!a.resumes_display_now(false, &connected()), "once");
+    }
+
+    /// The connection dropped and came back before the stream noticed: the display starts again
+    /// at once.
+    #[test]
+    fn a_display_that_ended_after_the_connection_came_back_starts_again_at_once() {
+        let (a, _d) = app();
+        let _token = a.begin_session().unwrap();
+        a.set_mouse_status(lost());
+        a.set_mouse_status(connected());
+        a.end_session();
+        assert_eq!(a.display_ended(false, &connected()), Comeback::Now);
+    }
+
+    /// Closed by the user, it stays closed; failed on a connection that never dropped, it shows
+    /// why (with Retry) instead of starting over and over.
+    #[test]
+    fn a_display_stopped_or_failing_on_a_steady_connection_does_not_come_back() {
+        let (a, _d) = app();
+        let _token = a.begin_session().unwrap();
+        a.set_mouse_status(lost());
+        a.end_session();
+        assert_eq!(a.display_ended(true, &lost()), Comeback::No);
+        assert!(!a.resumes_display_now(false, &connected()));
+
+        let _token = a.begin_session().unwrap();
+        a.set_mouse_status(connected());
+        a.end_session();
+        assert_eq!(a.display_ended(false, &connected()), Comeback::No);
+    }
+
+    /// Waiting to come back, it is called off by the user closing the display, and never fires
+    /// on a connection that is already up (its round trip updates come as Connected again).
+    #[test]
+    fn a_display_waiting_to_come_back_is_called_off_and_needs_the_connection_to_return() {
+        let (a, _d) = app();
+        let _token = a.begin_session().unwrap();
+        a.set_mouse_status(lost());
+        a.end_session();
+        assert_eq!(a.display_ended(false, &lost()), Comeback::WhenConnected);
+        assert!(!a.resumes_display_now(true, &connected()), "the connection was up already");
+        a.call_off_comeback();
+        assert!(!a.resumes_display_now(false, &connected()));
+    }
+
     #[test]
     fn the_display_does_not_start_when_off_or_already_running() {
         let (a, _d) = app();
+        a.set_start_display_on_connect(false).unwrap();
         a.ask_connect(true);
         assert_eq!(starts(&a, &[connected()]), [false], "the option is off");
         assert!(!starts_display_on_connect(true, &connected(), true, true), "a display runs already");
@@ -1968,19 +2111,19 @@ mod tests {
     }
 
     #[test]
-    fn starting_the_display_on_connect_is_off_by_default_and_saved() {
+    fn starting_the_display_on_connect_is_on_by_default_and_saved() {
         let (a, _d) = app();
-        assert!(!a.status().start_display_on_connect);
-        a.set_start_display_on_connect(true).unwrap();
         assert!(a.status().start_display_on_connect);
-        assert!(Config::load(&a.path).unwrap().start_display_on_connect);
+        a.set_start_display_on_connect(false).unwrap();
+        assert!(!a.status().start_display_on_connect);
+        assert!(!Config::load(&a.path).unwrap().start_display_on_connect);
     }
 
     // The connection to the Mac stays up whatever is shared; mouse off stops everything on it.
     #[cfg(windows)]
     #[test]
     fn mouse_off_also_turns_off_clipboard_and_language_but_keeps_the_connection() {
-        use sidescreen_core::mouse::MouseRole;
+        use expand_core::mouse::MouseRole;
         let (a, _d) = app();
         paired(&a);
         a.set_mouse_sharing(false).unwrap();
@@ -2240,8 +2383,8 @@ sharing_paused = true
         let pcs = known_pcs(&saved);
         assert!(pcs.iter().any(|p| p.0 == "pc-real"));
         assert_eq!(
-            sidescreen_core::share::admit::decide(&pcs, None, "pc-real"),
-            sidescreen_core::share::channel::Admit::Accept { token: token('b') }
+            expand_core::share::admit::decide(&pcs, None, "pc-real"),
+            expand_core::share::channel::Admit::Accept { token: token('b') }
         );
         // Learnt once: nothing more to learn, and a PC known by id never changes.
         std::fs::remove_file(&a.path).unwrap();
@@ -2339,7 +2482,7 @@ sharing_paused = true
     /// A Mac's control-link door on 127.0.0.1 that pairs while `mac`'s pairing mode is open and
     /// stores each new PC, as the Mac app does.
     async fn mac_door(mac: std::sync::Arc<AppState>) -> u16 {
-        let mut server = sidescreen_core::link::server::Server::bind("127.0.0.1:0".parse().unwrap()).await.unwrap();
+        let mut server = expand_core::link::server::Server::bind("127.0.0.1:0".parse().unwrap()).await.unwrap();
         let port = server.local_addr().port();
         tokio::spawn(async move {
             let gate: std::sync::Arc<dyn PairGate> = std::sync::Arc::new(PairingGate(mac.clone()));
@@ -2510,7 +2653,7 @@ sharing_paused = true
         assert_eq!(cfg.current_peer().unwrap().name, "MacBook");
     }
 
-    // Live check, task 9: the Mac called itself "Sidescreen" until it could read its computer
+    // Live check, task 9: the Mac called itself "Expand" until it could read its computer
     // name; the PC keeps the name of a Mac it knows in step with what the Mac says.
     #[test]
     fn a_known_mac_that_renamed_itself_is_shown_by_its_new_name() {
@@ -2556,7 +2699,7 @@ sharing_paused = true
 
     // ---- the Mac: pairing mode, several PCs ----
 
-    use sidescreen_core::link::PairGate;
+    use expand_core::link::PairGate;
     use std::time::{Duration, Instant};
 
     fn a_pc(id: &str, token: &str, allowed: bool) -> Peer {
@@ -2887,11 +3030,11 @@ sharing_paused = true
     }
 
     #[async_trait::async_trait]
-    impl sidescreen_core::session::HostEngines for FakeEngines {
-        async fn start(&mut self, _w: u32, _h: u32, _fps: u32) -> Result<(), sidescreen_core::sunshine::EngineError> {
-            if self.fail { Err(sidescreen_core::sunshine::EngineError::NotInstalled("Sunshine")) } else { Ok(()) }
+    impl expand_core::session::HostEngines for FakeEngines {
+        async fn start(&mut self, _w: u32, _h: u32, _fps: u32) -> Result<(), expand_core::sunshine::EngineError> {
+            if self.fail { Err(expand_core::sunshine::EngineError::NotInstalled("Sunshine")) } else { Ok(()) }
         }
-        async fn submit_pin(&mut self, _p: &str, _c: &str) -> Result<bool, sidescreen_core::sunshine::EngineError> {
+        async fn submit_pin(&mut self, _p: &str, _c: &str) -> Result<bool, expand_core::sunshine::EngineError> {
             Ok(true)
         }
         async fn stop(&mut self) {}
@@ -2902,7 +3045,7 @@ sharing_paused = true
 
     #[tokio::test]
     async fn the_running_display_size_is_noted_from_start_to_stop() {
-        use sidescreen_core::session::HostEngines;
+        use expand_core::session::HostEngines;
         let (a, _d) = app();
         let mut e = SizeTracking { inner: FakeEngines { fail: false }, state: &a };
         assert_eq!(a.status().display, None);

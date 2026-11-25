@@ -1,5 +1,5 @@
 // A PC that isn't connected: icon, name and raw state. With nothing connected an allowed PC has
-// a Connect button in the brand's gradient. The ⋯ button shows on hover, on keyboard focus and while its menu is
+// a Connect button in the brand's solid blue. The ⋯ button shows on hover, on keyboard focus and while its menu is
 // open; the menu holds Connect while another PC is connected, Block or Allow, and Forget…, which
 // asks inline.
 

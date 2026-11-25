@@ -1,6 +1,6 @@
-// Sidescreen's colours, "Shore" (round 3), from the app icon (design/icons/icon.svg): its sky blue
+// Expand's colours, "Shore" (round 3), from the app icon (design/icons/icon.svg): its sky blue
 // to violet gradient (#3aa8ff, #5d8bff at 55%, #8a5cf6; also app/src/brand.ts and brand.css), an
-// accent between the first two for switches, Connect and hovers, and the faint wash of them behind
+// accent between the first two for switches and hovers, a solid blue for Connect, and the faint wash of them behind
 // the panel. The names are the old ones: `blue` is the start, `violet` the middle, `magenta` the end.
 
 import SwiftUI
@@ -12,14 +12,10 @@ enum Brand {
     /// The accent, for switches and hovers: 40% of the way from the start to the middle.
     static let accent = Color(red: 0x48 / 255, green: 0x9c / 255, blue: 0xff / 255)  // #489cff
 
-    /// A small filled control (Connect): the gradient's blue half, left to right, in the same hues
-    /// but deeper, so white 12 pt text on it stays at 4.5:1 or more everywhere, hovered too
-    /// (#2563c9 5.7:1, #5a3cc0 7.4:1; about 5:1 at worst with the hover's +0.04).
-    static let control = LinearGradient(
-        colors: [
-            Color(red: 0x25 / 255, green: 0x63 / 255, blue: 0xc9 / 255),  // #2563c9
-            Color(red: 0x5a / 255, green: 0x3c / 255, blue: 0xc0 / 255),  // #5a3cc0
-        ], startPoint: .leading, endPoint: .trailing)
+    /// A small filled control (Connect): one solid blue, as what is on in the PC's window
+    /// (`BRAND_ON` in app/src/brand.ts), never the gradient. White 12 pt text on it is 4.7:1;
+    /// hovered it dims (5.1:1 and up) rather than lighten.
+    static let control = Color(red: 0x4f / 255, green: 0x6b / 255, blue: 0xdb / 255)  // #4f6bdb
 }
 
 /// Behind the whole panel: a faint blue glow from the top left and a fainter violet one from the

@@ -3,7 +3,7 @@
 //! long any of them was on a monitor, with millisecond times. For proving in one live run that
 //! Moonlight never shows, and for finding a flash.
 //!
-//! Off unless the app runs with `SIDESCREEN_TRACE_WINDOWS=1`; then the lines go to
+//! Off unless the app runs with `EXPAND_TRACE_WINDOWS=1`; then the lines go to
 //! `windows-trace.log` beside `sharing.log` (and to stderr). Off, a call costs one read of a flag
 //! set once (a line is built only when it is on). Never written by tests (the app must
 //! have enabled the shared log, as for `sharing.log`).
@@ -12,7 +12,7 @@ use std::io::Write;
 use std::path::Path;
 
 /// The environment variable that turns the trace on (`1`).
-pub const ENV: &str = "SIDESCREEN_TRACE_WINDOWS";
+pub const ENV: &str = "EXPAND_TRACE_WINDOWS";
 
 /// Whether a value of [`ENV`] turns the trace on.
 fn wanted(value: Option<&std::ffi::OsStr>) -> bool {
@@ -47,7 +47,7 @@ fn format_line(ms: u64, text: &str) -> String {
 pub fn line(make: impl FnOnce() -> String) {
     if on() {
         let line = format_line(now_ms(), &make());
-        eprintln!("sidescreen trace: {line}");
+        eprintln!("expand trace: {line}");
         write_line(&path(), &line);
     }
 }

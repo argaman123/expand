@@ -26,7 +26,7 @@ pub enum LinkError {
     AuthFailed,
     PairRejected,
     NeedsCode,
-    /// The other computer runs a version of Sidescreen this one cannot pair with.
+    /// The other computer runs a version of Expand this one cannot pair with.
     Version,
     Closed,
     Io(std::io::Error),
@@ -39,7 +39,7 @@ impl std::fmt::Display for LinkError {
             LinkError::AuthFailed => write!(f, "the other computer no longer trusts this one"),
             LinkError::PairRejected => write!(f, "pairing was declined"),
             LinkError::NeedsCode => write!(f, "This Mac needs its pairing code"),
-            LinkError::Version => write!(f, "the other computer runs another version of Sidescreen; update it"),
+            LinkError::Version => write!(f, "the other computer runs another version of Expand; update it"),
             LinkError::Closed => write!(f, "the connection was lost"),
             LinkError::Io(e) => write!(f, "connection error: {e}"),
         }

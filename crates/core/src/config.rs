@@ -130,7 +130,7 @@ pub struct Config {
     #[serde(default = "default_true")]
     pub close_to_tray: bool,
     /// PC: the display starts as soon as the connection to the Mac comes up.
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub start_display_on_connect: bool,
     /// PC: while the Mac has the keyboard, Ctrl reaches it as Command and Windows as Control.
     #[serde(default = "default_true")]
@@ -138,6 +138,9 @@ pub struct Config {
     /// PC: the wheel scrolls the Mac the other way round (mouse sharing and the display).
     #[serde(default = "default_true")]
     pub reverse_scroll: bool,
+    /// PC: the Mac's sound plays on the PC while the display runs.
+    #[serde(default = "default_true")]
+    pub mac_sound: bool,
 }
 
 fn default_true() -> bool {
@@ -200,7 +203,7 @@ fn temporary_path(path: &Path) -> PathBuf {
 }
 
 /// What a machine is called when its computer name cannot be read.
-const FALLBACK_NAME: &str = "Sidescreen";
+const FALLBACK_NAME: &str = "Expand";
 
 /// The name the owner gave this computer: on the Mac its Sharing name (an app opened from the
 /// Dock has no `HOSTNAME`), on Windows `COMPUTERNAME`.
@@ -239,16 +242,17 @@ impl Config {
             current: None,
             auto_connect: true,
             stay_awake: true,
-            sunshine_user: "sidescreen".to_string(),
+            sunshine_user: "expand".to_string(),
             sunshine_pass: random_hex(16),
             mouse_sharing: true,
             close_to_tray: true,
             first_run_done: false,
             clipboard_sharing: true,
             language_follow: true,
-            start_display_on_connect: false,
+            start_display_on_connect: true,
             ctrl_as_cmd: true,
             reverse_scroll: true,
+            mac_sound: true,
         }
     }
 
@@ -276,7 +280,7 @@ impl Config {
         if config.peers.is_empty() {
             if let Some(mut peer) = legacy.peer {
                 // The migrated file is saved in the new shape straight after: keep the old one so
-                // rolling back to an older Sidescreen still finds its pairing.
+                // rolling back to an older Expand still finds its pairing.
                 let backup = backup_path(path);
                 if !backup.exists() {
                     std::fs::copy(path, &backup).map_err(ConfigError::Io)?;
@@ -290,7 +294,7 @@ impl Config {
                 config.peers.push(peer);
             }
         }
-        // A Mac that could not read its own name before called itself "Sidescreen". The caller
+        // A Mac that could not read its own name before called itself "Expand". The caller
         // saves the loaded settings straight away, which keeps the new name.
         if role == Role::Mac {
             if let Some(name) = named_after_computer(&config.device_name, computer_name) {
@@ -365,14 +369,14 @@ impl Config {
         std::fs::rename(&temporary, path).map_err(ConfigError::Io)
     }
 
-    /// `SIDESCREEN_CONFIG`, when set and not empty, replaces the default location (for test runs).
+    /// `EXPAND_CONFIG`, when set and not empty, replaces the default location (for test runs).
     pub fn default_path() -> PathBuf {
-        if let Some(path) = std::env::var_os("SIDESCREEN_CONFIG").filter(|p| !p.is_empty()) {
+        if let Some(path) = std::env::var_os("EXPAND_CONFIG").filter(|p| !p.is_empty()) {
             return PathBuf::from(path);
         }
         dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("sidescreen")
+            .join("expand")
             .join("config.toml")
     }
 }
@@ -438,7 +442,7 @@ mod tests {
 
     const OLD_FILE: &str = r#"device_id = "0123456789abcdef0123456789abcdef"
 device_name = "Windows PC"
-sunshine_user = "sidescreen"
+sunshine_user = "expand"
 sunshine_pass = "p"
 mac_side = "left"
 sharing_paused = true
@@ -478,10 +482,10 @@ window_mode = "windowed"
         let path = dir.path().join("config.toml");
         std::fs::write(&path, OLD_FILE).unwrap();
         let c = Config::load(&path).unwrap();
-        assert!(!c.start_display_on_connect);
-        assert!(c.ctrl_as_cmd && c.reverse_scroll);
+        assert!(c.start_display_on_connect);
+        assert!(c.ctrl_as_cmd && c.reverse_scroll && c.mac_sound);
         let new = Config::default_new();
-        assert!(!new.start_display_on_connect && new.ctrl_as_cmd && new.reverse_scroll);
+        assert!(new.start_display_on_connect && new.ctrl_as_cmd && new.reverse_scroll && new.mac_sound);
     }
 
     // Live check, task 9: the id a 1.0 Mac kept for its PC can be stale (1.0 never checked it),
@@ -561,7 +565,7 @@ window_mode = "windowed"
             &path,
             r#"device_id = "0123456789abcdef0123456789abcdef"
 device_name = "PC"
-sunshine_user = "sidescreen"
+sunshine_user = "expand"
 sunshine_pass = "p"
 
 [peer]
@@ -619,12 +623,12 @@ window_mode = "windowed"
     }
 
     // Live check, task 9: a Mac app started from the Dock has neither COMPUTERNAME nor HOSTNAME,
-    // so it called itself "Sidescreen" and the PC showed that name.
+    // so it called itself "Expand" and the PC showed that name.
     #[test]
     fn a_missing_or_fallback_name_takes_the_computer_name() {
-        let mac = "Argaman\u{2019}s MacBook Pro";
+        let mac = "Alex\u{2019}s MacBook Pro";
         let computer = || Some(mac.to_string());
-        assert_eq!(named_after_computer("Sidescreen", computer).as_deref(), Some(mac));
+        assert_eq!(named_after_computer("Expand", computer).as_deref(), Some(mac));
         assert_eq!(named_after_computer("", computer).as_deref(), Some(mac));
         assert_eq!(named_after_computer("  ", computer).as_deref(), Some(mac));
     }
@@ -633,10 +637,10 @@ window_mode = "windowed"
     fn any_other_name_is_kept() {
         let computer = || Some("Studio".to_string());
         assert_eq!(named_after_computer("Work Mac", computer), None);
-        assert_eq!(named_after_computer("sidescreen", computer), None);
+        assert_eq!(named_after_computer("expand", computer), None);
         // Nothing better to offer: left as it is.
-        assert_eq!(named_after_computer("Sidescreen", || None), None);
-        assert_eq!(named_after_computer("Sidescreen", || Some("Sidescreen".to_string())), None);
+        assert_eq!(named_after_computer("Expand", || None), None);
+        assert_eq!(named_after_computer("Expand", || Some("Expand".to_string())), None);
     }
 
     #[test]
@@ -652,11 +656,11 @@ window_mode = "windowed"
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("config.toml");
         let mut c = Config::default_new();
-        c.device_name = "Sidescreen".into();
+        c.device_name = "Expand".into();
         c.save(&path).unwrap();
-        let expected = computer_name().unwrap_or_else(|| "Sidescreen".to_string());
+        let expected = computer_name().unwrap_or_else(|| "Expand".to_string());
         assert_eq!(Config::load_as(&path, Role::Mac).unwrap().device_name, expected);
-        assert_eq!(Config::load_as(&path, Role::Pc).unwrap().device_name, "Sidescreen");
+        assert_eq!(Config::load_as(&path, Role::Pc).unwrap().device_name, "Expand");
         c.device_name = "Work Mac".into();
         c.save(&path).unwrap();
         assert_eq!(Config::load_as(&path, Role::Mac).unwrap().device_name, "Work Mac");
@@ -665,10 +669,10 @@ window_mode = "windowed"
     #[test]
     fn the_config_path_can_be_overridden_for_testing() {
         // The only test that touches this variable, so no other test can race it.
-        std::env::set_var("SIDESCREEN_CONFIG", "/tmp/sidescreen-test/config.toml");
-        assert_eq!(Config::default_path(), PathBuf::from("/tmp/sidescreen-test/config.toml"));
-        std::env::set_var("SIDESCREEN_CONFIG", "");
-        assert!(Config::default_path().ends_with("sidescreen/config.toml"));
-        std::env::remove_var("SIDESCREEN_CONFIG");
+        std::env::set_var("EXPAND_CONFIG", "/tmp/expand-test/config.toml");
+        assert_eq!(Config::default_path(), PathBuf::from("/tmp/expand-test/config.toml"));
+        std::env::set_var("EXPAND_CONFIG", "");
+        assert!(Config::default_path().ends_with("expand/config.toml"));
+        std::env::remove_var("EXPAND_CONFIG");
     }
 }

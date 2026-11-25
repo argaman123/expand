@@ -47,7 +47,7 @@ pub enum EndReason {
     Busy { by: String },
     Blocked,
     Unknown,
-    /// The other computer runs a version of Sidescreen this one cannot work with.
+    /// The other computer runs a version of Expand this one cannot work with.
     Version,
 }
 

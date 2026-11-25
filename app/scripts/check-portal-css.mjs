@@ -13,7 +13,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 /** The classes the pages give their FluentProvider, and Fluent's own. */
-const PROVIDER_CLASSES = ["ss-provider", "ss-display", "ss-barpage", "fui-FluentProvider"];
+const PROVIDER_CLASSES = ["ex-provider", "ex-display", "ex-barpage", "fui-FluentProvider"];
 /** Inherited text styles: harmless on a portal's mount node. */
 const TEXT_ONLY = /^(color|font(-.*)?|line-height|letter-spacing|text-.*|user-select|-webkit-user-select|cursor|-webkit-font-smoothing|direction)$/;
 const LEAVES_PORTALS_OUT = ":not([data-portal-node])";

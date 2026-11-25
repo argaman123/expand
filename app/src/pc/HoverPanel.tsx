@@ -53,7 +53,7 @@ export function HoverPanel({ trigger, children, label, current, onOpen }: {
       }}
     >
       <PopoverTrigger disableButtonEnhancement>{tile}</PopoverTrigger>
-      <PopoverSurface ref={surfaceEl} className="ss-panel" aria-label={label} onBlur={leave}>{children}</PopoverSurface>
+      <PopoverSurface ref={surfaceEl} className="ex-panel" aria-label={label} onBlur={leave}>{children}</PopoverSurface>
     </Popover>
   );
 }

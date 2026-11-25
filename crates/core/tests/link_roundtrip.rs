@@ -1,9 +1,9 @@
-use sidescreen_core::config::Peer;
-use sidescreen_core::link::{
+use expand_core::config::Peer;
+use expand_core::link::{
     client, client_handshake, server::Server, server_handshake, Connection, LinkError, PairGate,
     CONNECT_TIMEOUT,
 };
-use sidescreen_core::protocol::{read_message, write_message, Message, PROTOCOL};
+use expand_core::protocol::{read_message, write_message, Message, PROTOCOL};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, DuplexStream};
@@ -196,7 +196,7 @@ async fn an_older_mac_is_not_paired_with() {
     });
     let client = client_handshake(a, "pc", "pcid", None, Some("123456")).await.map(|_| ());
     assert!(matches!(client, Err(LinkError::Version)), "{:?}", client.as_ref().map(|_| "a peer"));
-    assert_eq!(LinkError::Version.to_string(), "the other computer runs another version of Sidescreen; update it");
+    assert_eq!(LinkError::Version.to_string(), "the other computer runs another version of Expand; update it");
     assert!(matches!(mac.await.unwrap(), Ok(None)), "the PC said more");
 }
 
@@ -212,8 +212,8 @@ async fn a_mac_that_cannot_prove_the_code_is_not_paired_with() {
         let _start = read_message(&mut s).await;
         let (_, pake) = Spake2::<Ed25519Group>::start_b(
             &Password::new(b"000000"),
-            &Identity::new(b"sidescreen-pc:pcid"),
-            &Identity::new(b"sidescreen-mac:macid"),
+            &Identity::new(b"expand-pc:pcid"),
+            &Identity::new(b"expand-mac:macid"),
         );
         let key = Message::PairKey { id: "macid".into(), name: "MacBook".into(), pake: hex::encode(pake) };
         write_message(&mut s, &key).await.unwrap();

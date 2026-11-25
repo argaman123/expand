@@ -27,7 +27,7 @@ mod iokit {
             (true, None) => {
                 // kIOPMAssertionTypePreventUserIdleSystemSleep: the screen may sleep, the Mac not.
                 let kind = CFString::new("PreventUserIdleSystemSleep");
-                let reason = CFString::new("Sidescreen connected");
+                let reason = CFString::new("Expand connected");
                 let mut id: AssertionId = 0;
                 let status = unsafe {
                     IOPMAssertionCreateWithName(kind.as_concrete_TypeRef(), LEVEL_ON, reason.as_concrete_TypeRef(), &mut id)

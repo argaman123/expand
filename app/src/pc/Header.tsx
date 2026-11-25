@@ -112,8 +112,8 @@ export function Header({ status, onOpenSettings }: { status: Status; onOpenSetti
   };
 
   return (
-    <div className="ss-header">
-      <div className="ss-who">
+    <div className="ex-header">
+      <div className="ex-who">
         <Menu
           checkedValues={{ mac: key ? [key] : [] }}
           onCheckedValueChange={(_, d) => d.checkedItems[0] && connectTo(d.checkedItems[0])}
@@ -124,8 +124,8 @@ export function Header({ status, onOpenSettings }: { status: Status; onOpenSetti
           }}
         >
           <MenuTrigger disableButtonEnhancement>
-            <Button appearance="transparent" className="ss-macname" iconPosition="after" icon={<ChevronDown20Regular />}>
-              <span className="ss-macname-text">{name}</span>
+            <Button appearance="transparent" className="ex-macname" iconPosition="after" icon={<ChevronDown20Regular />}>
+              <span className="ex-macname-text">{name}</span>
             </Button>
           </MenuTrigger>
           <MenuPopover>
@@ -136,14 +136,14 @@ export function Header({ status, onOpenSettings }: { status: Status; onOpenSetti
                 return (
                   // A row: the device (picking it connects), then its own Forget item, which arrow
                   // keys reach next and the Delete key jumps to.
-                  <div key={p.key} role="presentation" className="ss-dev-row">
+                  <div key={p.key} role="presentation" className="ex-dev-row">
                     <MenuItemRadio
                       name="mac"
                       value={p.key}
                       icon={<Laptop20Regular />}
                       secondaryContent={p.host}
                       aria-keyshortcuts="Delete"
-                      className="ss-dev"
+                      className="ex-dev"
                       onKeyDown={(e) => {
                         if (e.key !== "Delete") return;
                         e.preventDefault();
@@ -159,7 +159,7 @@ export function Header({ status, onOpenSettings }: { status: Status; onOpenSetti
                         else bins.current.delete(p.key);
                       }}
                       persistOnClick
-                      className={`ss-forget${asking ? " asking" : ""}`}
+                      className={`ex-forget${asking ? " asking" : ""}`}
                       aria-label={asking ? `Forget ${p.name}?` : `Forget ${p.name}`}
                       icon={asking ? undefined : <Delete16Regular />}
                       onClick={() => pressForget(p.key)}
@@ -182,7 +182,7 @@ export function Header({ status, onOpenSettings }: { status: Status; onOpenSetti
             </MenuList>
           </MenuPopover>
         </Menu>
-        <div className="ss-line">
+        <div className="ex-line">
           <Tooltip
             content={roundTrip ?? ""}
             relationship="description"
@@ -191,8 +191,8 @@ export function Header({ status, onOpenSettings }: { status: Status; onOpenSetti
             visible={tipOpen && roundTrip !== null}
             onVisibleChange={(_, d) => setTipOpen(d.visible)}
           >
-            <span className="ss-status">
-              <span className="ss-status-icon">
+            <span className="ex-status">
+              <span className="ex-status-icon">
                 {badge === "spinner" ? <Spinner size="extra-tiny" /> : <PresenceBadge status={badge} size="small" />}
               </span>
               {text}
@@ -200,7 +200,7 @@ export function Header({ status, onOpenSettings }: { status: Status; onOpenSetti
           </Tooltip>
           {key &&
             (editing ? (
-              <span className="ss-edit">
+              <span className="ex-edit">
                 <Input
                   size="medium"
                   value={draft}
@@ -221,7 +221,7 @@ export function Header({ status, onOpenSettings }: { status: Status; onOpenSetti
                 <Button
                   appearance="subtle"
                   size="small"
-                  className="ss-addr"
+                  className="ex-addr"
                   icon={<Edit16Regular />}
                   iconPosition="after"
                   onClick={() => {
@@ -246,11 +246,11 @@ export function Header({ status, onOpenSettings }: { status: Status; onOpenSetti
           ) : (
             <Button appearance="subtle" size="small" onClick={connect}>Connect</Button>
           )}
-          {failure && <ErrorLine className="ss-header-err" failure={failure} />}
+          {failure && <ErrorLine className="ex-header-err" failure={failure} />}
         </div>
       </div>
       <Tooltip content="Settings" relationship="label" withArrow>
-        <Button appearance="subtle" size="large" icon={<Settings24Regular />} aria-label="Settings" onClick={onOpenSettings} className="ss-gear" />
+        <Button appearance="subtle" size="large" icon={<Settings24Regular />} aria-label="Settings" onClick={onOpenSettings} className="ex-gear" />
       </Tooltip>
       <PairDialog target={pairing} peers={status.peers} onClose={() => setPairing(null)} />
     </div>

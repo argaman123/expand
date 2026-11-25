@@ -6,8 +6,8 @@
 
 #[cfg(windows)]
 fn main() {
-    use sidescreen_core::layout::shows_on;
-    use sidescreen_core::share::geometry::Area;
+    use expand_core::layout::shows_on;
+    use expand_core::share::geometry::Area;
     use std::collections::HashMap;
     use std::time::{Duration, Instant};
     use windows::Win32::Foundation::{BOOL, HWND, LPARAM, RECT};
@@ -15,7 +15,7 @@ fn main() {
     use windows::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION};
     use windows::Win32::UI::WindowsAndMessaging::{EnumWindows, GetClassNameW, GetWindowRect, GetWindowThreadProcessId, IsWindowVisible};
 
-    sidescreen_core::winwindow::use_physical_pixels();
+    expand_core::winwindow::use_physical_pixels();
     let args: Vec<String> = std::env::args().collect();
     let secs: u64 = args[1].parse().unwrap();
     let exe = args.get(2).cloned().unwrap_or_else(|| "Moonlight.exe".into());
@@ -34,7 +34,7 @@ fn main() {
             String::from_utf16_lossy(&buf[..len as usize]).rsplit('\\').next().unwrap_or("").to_string()
         }
     };
-    let monitors = sidescreen_core::winwindow::monitors();
+    let monitors = expand_core::winwindow::monitors();
     let started = Instant::now();
     let mut names: HashMap<u32, bool> = HashMap::new();
     let mut since: HashMap<isize, (Instant, String, Area)> = HashMap::new();

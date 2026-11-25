@@ -1,11 +1,11 @@
-// sidescreen-panel: Sidescreen's menu-bar icon and panel on the Mac.
+// expand-panel: Expand's menu-bar icon and panel on the Mac.
 //
-// The Sidescreen app starts it and talks to it over stdin and stdout (see Bridge.swift).
+// The Expand app starts it and talks to it over stdin and stdout (see Bridge.swift).
 //
-//   sidescreen-panel                        the menu-bar panel, fed by the app
-//   sidescreen-panel --check-fixture F...   decodes each fixture and runs the self-test, no window
-//   sidescreen-panel --open                 also shows the panel in a window at launch (tests)
-//   sidescreen-panel --fixture F            takes its state from F instead of stdin (tests)
+//   expand-panel                        the menu-bar panel, fed by the app
+//   expand-panel --check-fixture F...   decodes each fixture and runs the self-test, no window
+//   expand-panel --open                 also shows the panel in a window at launch (tests)
+//   expand-panel --fixture F            takes its state from F instead of stdin (tests)
 
 import AppKit
 import SwiftUI
@@ -25,12 +25,12 @@ enum Entry {
             guard i + 1 < args.count, let data = FileManager.default.contents(atPath: args[i + 1]),
                 let dto = decodeState(data)
             else {
-                FileHandle.standardError.write(Data("sidescreen-panel: unreadable fixture\n".utf8))
+                FileHandle.standardError.write(Data("expand-panel: unreadable fixture\n".utf8))
                 exit(2)
             }
             Launch.fixture = dto
         }
-        SidescreenPanel.main()
+        ExpandPanel.main()
     }
 }
 
@@ -40,7 +40,7 @@ enum Launch {
     static var fixture: PanelDto?
 }
 
-struct SidescreenPanel: App {
+struct ExpandPanel: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
@@ -48,7 +48,7 @@ struct SidescreenPanel: App {
             PanelView(model: delegate.model)
         } label: {
             Image(nsImage: Icons.tray)
-                .accessibilityLabel("Sidescreen")
+                .accessibilityLabel("Expand")
         }
         .menuBarExtraStyle(.window)
     }
@@ -113,7 +113,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.isMovableByWindowBackground = true
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.title = "Sidescreen"
+        panel.title = "Expand"
         let host = NSHostingController(rootView: PanelView(model: model).background(WindowMaterial()))
         host.sizingOptions = [.preferredContentSize]  // the window follows the panel's height
         panel.contentViewController = host

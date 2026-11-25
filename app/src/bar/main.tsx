@@ -12,7 +12,7 @@ import "./bar.css";
 function BarPage() {
   const status = useStatus();
   return (
-    <FluentProvider theme={THEME} className="ss-barpage">
+    <FluentProvider theme={THEME} className="ex-barpage">
       <NotchBar status={status} />
     </FluentProvider>
   );

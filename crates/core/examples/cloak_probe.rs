@@ -17,7 +17,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).is_some_and(|a| a == "child") {
         unsafe {
-            let _ = CreateWindowExW(WINDOW_EX_STYLE(0), w!("STATIC"), w!("sidescreen-cloak-probe"), WS_OVERLAPPEDWINDOW, -30000, -30000, 200, 100, None, None, None, None);
+            let _ = CreateWindowExW(WINDOW_EX_STYLE(0), w!("STATIC"), w!("expand-cloak-probe"), WS_OVERLAPPEDWINDOW, -30000, -30000, 200, 100, None, None, None, None);
         }
         // Busy: never pumps messages.
         std::thread::sleep(Duration::from_secs(5));
@@ -28,7 +28,7 @@ fn main() {
     let mut window = HWND::default();
     for _ in 0..50 {
         std::thread::sleep(Duration::from_millis(50));
-        if let Ok(w) = unsafe { FindWindowW(None, w!("sidescreen-cloak-probe")) } {
+        if let Ok(w) = unsafe { FindWindowW(None, w!("expand-cloak-probe")) } {
             window = w;
             break;
         }

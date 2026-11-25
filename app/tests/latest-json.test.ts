@@ -6,12 +6,12 @@ import { installerName, latestJson } from "../scripts/latest-json.mjs";
 const SIG = "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZQ==";
 
 test("the installer is named as the Windows bundle names it", () => {
-  assert.equal(installerName("1.2.0"), "Sidescreen_1.2.0_x64-setup.exe");
+  assert.equal(installerName("1.2.0"), "Expand_1.2.0_x64-setup.exe");
 });
 
 test("the manifest points both Windows targets at the tagged release's installer", () => {
   const m = latestJson({ version: "1.2.0", signature: `${SIG}\r\n`, pubDate: new Date("2026-11-24T08:30:15.123Z") });
-  const url = "https://github.com/argaman123/sidescreen/releases/download/v1.2.0/Sidescreen_1.2.0_x64-setup.exe";
+  const url = "https://github.com/argaman123/expand/releases/download/v1.2.0/Expand_1.2.0_x64-setup.exe";
   assert.deepEqual(m, {
     version: "1.2.0",
     notes: "",

@@ -72,7 +72,7 @@ pub fn host_menu(status: &StatusDto, system: &SystemDto) -> Vec<Line> {
     }
 
     lines.push(Line::Separator);
-    lines.push(Line::Action { id: "quit", label: "Quit Sidescreen".into(), enabled: true });
+    lines.push(Line::Action { id: "quit", label: "Quit Expand".into(), enabled: true });
     lines
 }
 
@@ -132,6 +132,7 @@ mod tests {
             start_display_on_connect: false,
             ctrl_as_cmd: true,
             reverse_scroll: true,
+            mac_sound: true,
             peer_addresses: Vec::new(),
             latency_ms: None,
             viewer_monitor: None,
@@ -205,7 +206,7 @@ mod tests {
         let lines = host_menu(&status(), &system());
         assert!(lines.contains(&Line::Check { id: "login", label: "Start at login".into(), checked: true }));
         assert!(lines.contains(&Line::Action { id: "forget", label: "Forget this PC".into(), enabled: true }));
-        assert_eq!(lines.last(), Some(&Line::Action { id: "quit", label: "Quit Sidescreen".into(), enabled: true }));
+        assert_eq!(lines.last(), Some(&Line::Action { id: "quit", label: "Quit Expand".into(), enabled: true }));
     }
 
     #[test]

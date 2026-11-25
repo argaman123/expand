@@ -1080,6 +1080,71 @@ dependencies = [
 ]
 
 [[package]]
+name = "expand-app"
+version = "1.2.0"
+dependencies = [
+ "async-trait",
+ "core-foundation",
+ "expand_core",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-autostart",
+ "tauri-plugin-dialog",
+ "tauri-plugin-updater",
+ "tempfile",
+ "tokio",
+ "tokio-util",
+ "windows 0.58.0",
+]
+
+[[package]]
+name = "expand_core"
+version = "0.1.0"
+dependencies = [
+ "arboard",
+ "async-trait",
+ "base64 0.22.1",
+ "chacha20poly1305",
+ "core-foundation",
+ "core-graphics 0.24.0",
+ "core-graphics 0.25.0",
+ "dirs 5.0.1",
+ "foreign-types",
+ "futures",
+ "hex",
+ "hkdf",
+ "hmac",
+ "if-addrs",
+ "input-capture",
+ "input-emulation",
+ "input-event",
+ "mdns-sd",
+ "png 0.17.16",
+ "rand 0.8.8",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "sha2",
+ "spake2",
+ "tempfile",
+ "tokio",
+ "tokio-util",
+ "toml 0.8.23",
+ "windows 0.58.0",
+ "zeroize",
+]
+
+[[package]]
+name = "expand_viewer_hook"
+version = "0.1.0"
+dependencies = [
+ "windows 0.58.0",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4070,71 +4135,6 @@ name = "shlex"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
-
-[[package]]
-name = "sidescreen-app"
-version = "1.1.1"
-dependencies = [
- "async-trait",
- "core-foundation",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "sidescreen_core",
- "tauri",
- "tauri-build",
- "tauri-plugin-autostart",
- "tauri-plugin-dialog",
- "tauri-plugin-updater",
- "tempfile",
- "tokio",
- "tokio-util",
- "windows 0.58.0",
-]
-
-[[package]]
-name = "sidescreen_core"
-version = "0.1.0"
-dependencies = [
- "arboard",
- "async-trait",
- "base64 0.22.1",
- "chacha20poly1305",
- "core-foundation",
- "core-graphics 0.24.0",
- "core-graphics 0.25.0",
- "dirs 5.0.1",
- "foreign-types",
- "futures",
- "hex",
- "hkdf",
- "hmac",
- "if-addrs",
- "input-capture",
- "input-emulation",
- "input-event",
- "mdns-sd",
- "png 0.17.16",
- "rand 0.8.8",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "sha2",
- "spake2",
- "tempfile",
- "tokio",
- "tokio-util",
- "toml 0.8.23",
- "windows 0.58.0",
- "zeroize",
-]
-
-[[package]]
-name = "sidescreen_viewer_hook"
-version = "0.1.0"
-dependencies = [
- "windows 0.58.0",
-]
 
 [[package]]
 name = "signal-hook-registry"

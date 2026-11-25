@@ -5,7 +5,7 @@ import {
   Toolbar, ToolbarButton, ToolbarDivider, Tooltip,
 } from "@fluentui/react-components";
 import {
-  ChevronDown16Regular, Desktop20Regular, Dismiss20Regular, FullScreenMinimize20Regular, Settings20Regular,
+  ChevronDown16Regular, Desktop20Regular, Dismiss20Regular, FullScreenMinimize20Regular, Pin20Filled, Pin20Regular, Settings20Regular,
 } from "@fluentui/react-icons";
 import {
   barMenuOpen, barShape, displayFullScreen, displayPullDown, displayStop, displayWindow, getMonitors, saveSettings,
@@ -39,6 +39,22 @@ const PULL_PX = 30;
 type Lock = "menu" | "pop";
 
 const quietly = (p: Promise<unknown>) => void p.catch(() => {});
+/** Where the bar's pin is kept, in this window's own storage (gone with it, nothing else reads it). */
+const PIN_KEY = "expand.bar.pinned";
+const readPinned = () => {
+  try {
+    return window.localStorage.getItem(PIN_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+const keepPinned = (on: boolean) => {
+  try {
+    window.localStorage.setItem(PIN_KEY, on ? "1" : "0");
+  } catch {
+    /* it is only remembered while the bar stays open */
+  }
+};
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** Follows a Tauri event while mounted. */
@@ -73,6 +89,7 @@ export function NotchBar({ status }: { status: Status | null }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [popOpen, setPopOpen] = useState(false);
   const [near, setNear] = useState(false); // the pointer is near the top centre (bar.rs)
+  const [stuck, setStuck] = useState(readPinned); // the user pinned the bar
   const [drawn, setDrawn] = useState<BarShape>("hidden"); // what is drawn (inside the region)
   const applied = useRef<BarShape>("hidden"); // the region asked for last
   // Popup mode: the window holds the display window's title bar settings popover (bar.rs), at its
@@ -236,7 +253,7 @@ export function NotchBar({ status }: { status: Status | null }) {
   // What shows: the bar while open, near or peeking (all of the window while a menu or popover
   // is open under it), else nothing. More: the region grows, then it is drawn (the bar fades in).
   // Less: drawn at once (the fade out), and the region shrinks once that is done.
-  const target: BarShape = barTarget({ popup, popOpen, open, menu: menuOpen || popOpen, near, peeking });
+  const target: BarShape = barTarget({ popup, popOpen, open, menu: menuOpen || popOpen, near, peeking, pinned: stuck });
   const step = useRef(0);
   useEffect(() => {
     const n = ++step.current;
@@ -366,13 +383,13 @@ export function NotchBar({ status }: { status: Status | null }) {
 
   // The display settings: in the bar's popover, or in the title bar's (popup mode).
   const panel = (
-    <PopoverSurface className="ss-npanel">
+    <PopoverSurface className="ex-npanel">
       {s && cur && (
-        <div className="ss-npb">
-          <div className="ss-nrow">
+        <div className="ex-npb">
+          <div className="ex-nrow">
             <label htmlFor={ids.res}>Resolution</label>
             <Dropdown
-              id={ids.res} inlinePopup size="small" className="ss-ndd"
+              id={ids.res} inlinePopup size="small" className="ex-ndd"
               value={resLabel(cur)} selectedOptions={[resKey(cur)]}
               onOptionSelect={(_, d) => {
                 const r = resOpts.find((x) => resKey(x) === d.optionValue);
@@ -382,10 +399,10 @@ export function NotchBar({ status }: { status: Status | null }) {
               {resOpts.map((r) => <Option key={resKey(r)} value={resKey(r)} text={resLabel(r)}>{resLabel(r)}</Option>)}
             </Dropdown>
           </div>
-          <div className="ss-nrow">
+          <div className="ex-nrow">
             <label htmlFor={ids.fps}>Frame rate</label>
             <Dropdown
-              id={ids.fps} inlinePopup size="small" className="ss-ndd"
+              id={ids.fps} inlinePopup size="small" className="ex-ndd"
               value={fpsLabel(s.fps)} selectedOptions={[String(s.fps)]}
               onOptionSelect={(_, d) => {
                 const v = Number(d.optionValue);
@@ -395,10 +412,10 @@ export function NotchBar({ status }: { status: Status | null }) {
               {fpsOptions(s.fps).map((v) => <Option key={v} value={String(v)} text={fpsLabel(v)}>{fpsLabel(v)}</Option>)}
             </Dropdown>
           </div>
-          <div className="ss-nrow">
+          <div className="ex-nrow">
             <label htmlFor={ids.rate}>Bitrate</label>
             <Dropdown
-              id={ids.rate} inlinePopup size="small" className="ss-ndd"
+              id={ids.rate} inlinePopup size="small" className="ex-ndd"
               value={rateLabel(s.bitrate_mbps)} selectedOptions={[String(s.bitrate_mbps)]}
               onOptionSelect={(_, d) => {
                 const v = Number(d.optionValue);
@@ -417,26 +434,38 @@ export function NotchBar({ status }: { status: Status | null }) {
     <>
       <div
         ref={notch}
-        className={`ss-notch${drawn !== "hidden" ? " ss-near" : ""}${RANK[drawn] >= RANK.bar ? " ss-open" : ""}`}
+        className={`ex-notch${drawn !== "hidden" ? " ex-near" : ""}${RANK[drawn] >= RANK.bar ? " ex-open" : ""}`}
         style={popup ? { display: "none" } : undefined}
         onMouseEnter={enter}
         onMouseLeave={leave}
         onPointerDown={pointerDown}
       >
-        <div className="ss-nbar">
-          <Toolbar ref={bar} className="ss-tbar" size="medium" aria-label={name}>
-            <span className="ss-who"><span className="ss-dot" />{name}</span>
+        <div className="ex-nbar">
+          <Toolbar ref={bar} className="ex-tbar" size="medium" aria-label={name}>
+            <span className="ex-who"><span className="ex-dot" />{name}</span>
             <Popover open={popOpen && !popup} onOpenChange={(_, d) => ask("pop", d.open)} positioning="below" trapFocus>
               <PopoverTrigger disableButtonEnhancement>
                 <Tooltip content="Display settings" relationship="description" positioning="below" withArrow onVisibleChange={onTip("settings")}>
-                  <ToolbarButton className="ss-data" icon={<Settings20Regular />} aria-label="Display settings">
-                    <span className="ss-data-text">{s ? `${resLabel(cur!)} · ${fpsLabel(s.fps)}` : ""}</span>
+                  <ToolbarButton className="ex-data" icon={<Settings20Regular />} aria-label="Display settings">
+                    <span className="ex-data-text">{s ? `${resLabel(cur!)} · ${fpsLabel(s.fps)}` : ""}</span>
                   </ToolbarButton>
                 </Tooltip>
               </PopoverTrigger>
               {panel}
             </Popover>
             <ToolbarDivider />
+            <Tooltip content={stuck ? "Unpin" : "Pin"} relationship="label" positioning="below" withArrow onVisibleChange={onTip("pin")}>
+              <ToolbarButton
+                icon={stuck ? <Pin20Filled /> : <Pin20Regular />}
+                aria-pressed={stuck}
+                className={stuck ? "ex-pinned" : undefined}
+                onClick={() => {
+                  const on = !stuck;
+                  setStuck(on);
+                  keepPinned(on);
+                }}
+              />
+            </Tooltip>
             <Menu
               open={menuOpen}
               onOpenChange={(_, d) => ask("menu", d.open)}
@@ -446,9 +475,9 @@ export function NotchBar({ status }: { status: Status | null }) {
             >
               <MenuTrigger disableButtonEnhancement>
                 <Tooltip content="Monitor" relationship="label" positioning="below" withArrow onVisibleChange={onTip("monitor")}>
-                  <ToolbarButton icon={<Desktop20Regular />} className="ss-mon">
+                  <ToolbarButton icon={<Desktop20Regular />} className="ex-mon">
                     {current ?? ""}
-                    <ChevronDown16Regular className="ss-chev" />
+                    <ChevronDown16Regular className="ex-chev" />
                   </ToolbarButton>
                 </Tooltip>
               </MenuTrigger>
@@ -482,8 +511,8 @@ export function NotchBar({ status }: { status: Status | null }) {
         </div>
       </div>
       {popup && (
-        <div className="ss-popup">
-          <div ref={setAnchor} className="ss-panchor" />
+        <div className="ex-popup">
+          <div ref={setAnchor} className="ex-panchor" />
           {anchor && (
             <Popover
               open={popOpen}

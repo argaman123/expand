@@ -51,12 +51,12 @@ pub fn verify(token: &str, nonce: &str, mac: &str) -> bool {
 
 /// Challenge response for connecting with a paired token. Keyed by the token, bound to the nonce.
 pub fn connect_proof(token: &str, nonce: &str) -> String {
-    hex::encode(mac_for(token, &format!("sidescreen connect:{nonce}")).finalize().into_bytes())
+    hex::encode(mac_for(token, &format!("expand connect:{nonce}")).finalize().into_bytes())
 }
 
 /// Constant-time check of a proof produced by [`connect_proof`].
 pub fn verify_connect_proof(token: &str, nonce: &str, proof: &str) -> bool {
-    verify_mac(token, &format!("sidescreen connect:{nonce}"), proof)
+    verify_mac(token, &format!("expand connect:{nonce}"), proof)
 }
 
 #[cfg(test)]
@@ -114,10 +114,10 @@ mod tests {
         }
     }
 
-    /// Vector from: printf 'sidescreen connect:nonce-a' | openssl dgst -sha256 -hmac 'tok'
+    /// Vector from: printf 'expand connect:nonce-a' | openssl dgst -sha256 -hmac 'tok'
     #[test]
     fn connect_proof_matches_an_independent_hmac_sha256() {
-        assert_eq!(connect_proof("tok", "nonce-a"), "3b4f25569f1a98daf1116216ce8dcc2a43463b41000d01eae3cc01424b41f817");
+        assert_eq!(connect_proof("tok", "nonce-a"), "293d4ea5ec479c57c5eddd5dc51f1443f3b54ca4bcf4c3622ed17677f0dd668d");
     }
 
     #[test]

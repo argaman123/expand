@@ -197,7 +197,7 @@ async fn session(
         r = crate::link::client::first_reachable(&addrs, RETRY) => r,
     };
     let Some((stream, _)) = reached else {
-        return SessionEnd::Network("the Mac is not answering; is Sidescreen running there?".to_string());
+        return SessionEnd::Network("the Mac is not answering; is Expand running there?".to_string());
     };
     let _ = stream.set_nodelay(true);
     let handshake = tokio::select! {
@@ -306,7 +306,7 @@ async fn session(
                 }
                 let along = along_edge(monitor, at, placement.side);
                 over_on_mac = Some(monitor);
-                // Keys typed while Sidescreen's main window is in front never reach the capture
+                // Keys typed while Expand's main window is in front never reach the capture
                 // (seen 2026-11-19); give the keyboard to the desktop while the Mac has control.
                 // Not while the keyboard is on the embedded viewer (`should_step_aside`).
                 winwindow::step_aside_if_in_front();

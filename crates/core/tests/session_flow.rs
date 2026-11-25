@@ -1,14 +1,14 @@
 //! Connect/disconnect flows with fake engines, over in-memory pipes with paused time.
 
 use async_trait::async_trait;
-use sidescreen_core::config::{Peer, StreamSettings};
-use sidescreen_core::side::Side;
-use sidescreen_core::link::Connection;
-use sidescreen_core::protocol::{write_message, Message};
-use sidescreen_core::session::client::run_connected;
-use sidescreen_core::session::host::serve;
-use sidescreen_core::session::{HostEngines, State, ViewerEngine};
-use sidescreen_core::sunshine::EngineError;
+use expand_core::config::{Peer, StreamSettings};
+use expand_core::side::Side;
+use expand_core::link::Connection;
+use expand_core::protocol::{write_message, Message};
+use expand_core::session::client::run_connected;
+use expand_core::session::host::serve;
+use expand_core::session::{HostEngines, State, ViewerEngine};
+use expand_core::sunshine::EngineError;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::{watch, Notify};
@@ -450,7 +450,7 @@ async fn the_mac_reports_its_other_addresses() {
     r.cancel.cancel();
     let peer = r.client.await.unwrap();
     let expected: Vec<String> =
-        sidescreen_core::session::host::local_addresses().into_iter().filter(|a| a != "192.168.1.50").collect();
+        expand_core::session::host::local_addresses().into_iter().filter(|a| a != "192.168.1.50").collect();
     assert_eq!(peer.addresses, expected);
 }
 
@@ -470,8 +470,8 @@ async fn the_mac_learns_which_side_it_sits_on_before_starting() {
 // closed hard mid-session forgot it while the Mac remembered: "no longer trusts this one".
 #[tokio::test]
 async fn a_new_pairing_is_saved_as_soon_as_it_is_made() {
-    use sidescreen_core::config::Config;
-    use sidescreen_core::link::{server::Server, PairGate};
+    use expand_core::config::Config;
+    use expand_core::link::{server::Server, PairGate};
 
     struct Allow;
     impl PairGate for Allow {
@@ -510,7 +510,7 @@ async fn a_new_pairing_is_saved_as_soon_as_it_is_made() {
     let cfg = Config::default_new();
     let session = {
         let cancel = cancel.clone();
-        async move { sidescreen_core::session::client::run(vec![addr], &cfg, &mut viewer, &state, cancel, &save, Some("123456")).await }
+        async move { expand_core::session::client::run(vec![addr], &cfg, &mut viewer, &state, cancel, &save, Some("123456")).await }
     };
     let watcher = async {
         // The Mac never gets past starting, so the session is still running here.
@@ -532,7 +532,7 @@ async fn a_new_pairing_is_saved_as_soon_as_it_is_made() {
 
 #[tokio::test(start_paused = true)]
 async fn a_start_from_a_pc_that_may_not_start_is_told_the_mac_is_in_use() {
-    use sidescreen_core::session::host::serve_gated;
+    use expand_core::session::host::serve_gated;
     let (a, b) = tokio::io::duplex(8192);
     let calls: Calls = Default::default();
     let host = {

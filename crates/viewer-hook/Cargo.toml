@@ -1,5 +1,5 @@
 [package]
-name = "sidescreen_viewer_hook"
+name = "expand_viewer_hook"
 version = "0.1.0"
 edition = "2021"
 description = "A small library Windows loads into the viewer (Moonlight) to keep its stream window out of sight from the moment it is made"

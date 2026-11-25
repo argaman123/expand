@@ -1,4 +1,4 @@
-// `sidescreen-panel --check-fixture FILE...`: a self-test that needs no window. Each non-empty
+// `expand-panel --check-fixture FILE...`: a self-test that needs no window. Each non-empty
 // line of each fixture must decode as a `PanelDto` through the same path the stdin reader uses;
 // then the protocol and the model's rules are checked. Prints "OK" lines, or "FAIL" and exits 1.
 // The pairing code is never printed.

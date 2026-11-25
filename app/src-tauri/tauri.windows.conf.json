@@ -3,7 +3,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Sidescreen",
+        "title": "Expand",
         "width": 1240,
         "height": 780,
         "minWidth": 960,
@@ -22,6 +22,6 @@
     ]
   },
   "build": {
-    "beforeBundleCommand": "cargo build -p sidescreen_viewer_hook --release"
+    "beforeBundleCommand": "cargo build -p expand_viewer_hook --release"
   }
 }

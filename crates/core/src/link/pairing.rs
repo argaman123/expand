@@ -6,7 +6,7 @@
 //! 1. PC to Mac, `PairStart`. The Mac gets the code from its open pairing mode, or answers
 //!    `PairResult { accepted: false }` straight away.
 //! 2. Mac to PC, `PairKey { id, name, pake }`: SPAKE2 side B over Ed25519, keyed by the code, with
-//!    the identities `sidescreen-pc:<pc id>` and `sidescreen-mac:<mac id>`.
+//!    the identities `expand-pc:<pc id>` and `expand-mac:<mac id>`.
 //! 3. PC to Mac, `PairConfirm { pake, confirm }`: SPAKE2 side A, and the PC's key confirmation.
 //! 4. Mac to PC, `PairResult { accepted, confirm, token }`: only once the PC's confirmation is
 //!    right and pairing mode still admits it, the Mac's key confirmation and a new token sealed
@@ -34,16 +34,16 @@ use sha2::{Digest, Sha256};
 use spake2::{Ed25519Group, Identity, Password, Spake2};
 use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
-const PC_CONFIRM: &[u8] = b"sidescreen pairing: pc confirms";
-const MAC_CONFIRM: &[u8] = b"sidescreen pairing: mac confirms";
-const TOKEN_KEY: &[u8] = b"sidescreen pairing: token key";
+const PC_CONFIRM: &[u8] = b"expand pairing: pc confirms";
+const MAC_CONFIRM: &[u8] = b"expand pairing: mac confirms";
+const TOKEN_KEY: &[u8] = b"expand pairing: token key";
 
 fn pc_identity(pc_id: &str) -> Identity {
-    Identity::new(format!("sidescreen-pc:{pc_id}").as_bytes())
+    Identity::new(format!("expand-pc:{pc_id}").as_bytes())
 }
 
 fn mac_identity(mac_id: &str) -> Identity {
-    Identity::new(format!("sidescreen-mac:{mac_id}").as_bytes())
+    Identity::new(format!("expand-mac:{mac_id}").as_bytes())
 }
 
 /// Who took part and what was said: everything the two sides must agree on.
@@ -61,7 +61,7 @@ pub(crate) struct Transcript<'a> {
 /// by moving bytes from one field to the next.
 pub(crate) fn transcript(t: &Transcript) -> [u8; 32] {
     let mut h = Sha256::new();
-    h.update(b"sidescreen pairing transcript");
+    h.update(b"expand pairing transcript");
     h.update(PROTOCOL.to_be_bytes());
     for field in [
         t.pc_id.as_bytes(),

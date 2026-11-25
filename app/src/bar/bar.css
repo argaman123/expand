@@ -1,56 +1,57 @@
 /* The bar over the full-screen display: a see-through window of a fixed size, of which only what
    shows takes the pointer (its region, bar.rs). Hidden until the pointer comes near; then the
    whole bar (round 3: no tab step). */
-:root { color-scheme: dark; --ss-ease: cubic-bezier(.1, .9, .2, 1); }
-html:has(.ss-barpage), body:has(.ss-barpage), #root:has(.ss-barpage) { height: 100%; margin: 0; overflow: hidden; background: transparent; }
-.ss-barpage { color: #fff; font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; font-size: 14px; user-select: none; cursor: default; }
+:root { color-scheme: dark; --ex-ease: cubic-bezier(.1, .9, .2, 1); }
+html:has(.ex-barpage), body:has(.ex-barpage), #root:has(.ex-barpage) { height: 100%; margin: 0; overflow: hidden; background: transparent; }
+.ex-barpage { color: #fff; font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; font-size: 14px; user-select: none; cursor: default; }
 /* Fluent gives every portal (a tooltip, a menu) the provider's classes too: filling the window,
    one would cover the bar and take the pointer from it. */
-.ss-barpage:not([data-portal-node]) { height: 100%; display: flex; justify-content: center; align-items: flex-start; background: transparent !important; }
+.ex-barpage:not([data-portal-node]) { height: 100%; display: flex; justify-content: center; align-items: flex-start; background: transparent !important; }
 
 /* The bar and the margin round it, centred at the top of the window. */
-.ss-notch { position: relative; flex-shrink: 0; width: max-content; padding: 0 32px 16px; }
+.ex-notch { position: relative; flex-shrink: 0; width: max-content; padding: 0 32px 16px; }
 
-.ss-tbar { gap: 2px; padding: 6px 8px !important; white-space: nowrap; border-radius: 0 0 10px 10px; color: #fff;
+.ex-tbar { gap: 2px; padding: 6px 8px !important; white-space: nowrap; border-radius: 0 0 10px 10px; color: #fff;
   background: rgba(40, 40, 42, .94); backdrop-filter: blur(30px) saturate(1.5);
   box-shadow: 0 6px 20px rgba(0, 0, 0, .32); } /* no outline rings (round 4, the owner) */
-.ss-who { display: flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; font-weight: 600; }
-.ss-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ss-on); box-shadow: 0 0 6px rgb(var(--ss-rgb-glow) / .8); flex-shrink: 0; }
+.ex-who { display: flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; font-weight: 600; }
+.ex-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ex-on); box-shadow: 0 0 6px rgb(var(--ex-rgb-glow) / .8); flex-shrink: 0; }
 /* A hairline of the brand's gradient along the bar's lower edge, inside its rounded corners. */
-.ss-tbar { position: relative; }
-.ss-tbar::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: 0; height: 1px; opacity: .6; pointer-events: none;
-  background: linear-gradient(90deg, transparent, var(--ss-start) 20%, var(--ss-mid) 50%, var(--ss-end) 80%, transparent); }
-.ss-data { font-variant-numeric: tabular-nums; font-weight: 400 !important; color: var(--colorNeutralForeground2) !important; }
-.ss-data .fui-Button__icon { display: none; } /* the settings icon: only where the bar shows no text (a dev option for now) */
+.ex-tbar { position: relative; }
+.ex-tbar::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: 0; height: 1px; opacity: .6; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--ex-start) 20%, var(--ex-mid) 50%, var(--ex-end) 80%, transparent); }
+.ex-data { font-variant-numeric: tabular-nums; font-weight: 400 !important; color: var(--colorNeutralForeground2) !important; }
+.ex-data .fui-Button__icon { display: none; } /* the settings icon: only where the bar shows no text (a dev option for now) */
 /* Sized to its content like its neighbours, not to a button's 96px minimum: the gaps stay even. */
-.ss-tbar .ss-mon { min-width: 0 !important; }
-.ss-mon .ss-chev { margin-left: 2px; color: var(--colorNeutralForeground3); }
+.ex-tbar .ex-mon { min-width: 0 !important; }
+.ex-tbar .ex-pinned { color: var(--ex-on) !important; } /* pinned: the pin in the brand blue */
+.ex-mon .ex-chev { margin-left: 2px; color: var(--colorNeutralForeground3); }
 
 /* The display settings popover. */
-.ss-npanel { width: 340px; padding: 0 !important; border-radius: 8px !important; }
-.ss-npb { padding: 4px 16px 6px; }
-.ss-nrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
-.ss-nrow + .ss-nrow { border-top: 1px solid rgba(255, 255, 255, .05); }
-.ss-ndd { min-width: 156px !important; }
+.ex-npanel { width: 340px; padding: 0 !important; border-radius: 8px !important; }
+.ex-npb { padding: 4px 16px 6px; }
+.ex-nrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
+.ex-nrow + .ex-nrow { border-top: 1px solid rgba(255, 255, 255, .05); }
+.ex-ndd { min-width: 156px !important; }
 
 /* Hidden until the pointer comes near; then the whole bar slides down a little and fades in (round
    3: no tab step). Its region (bar.rs) is set first, so nothing about it moves under the pointer. */
-.ss-notch .ss-nbar { transition: opacity .18s, transform .18s var(--ss-ease); }
+.ex-notch .ex-nbar { transition: opacity .18s, transform .18s var(--ex-ease); }
 /* Going, it slides back up behind the top edge and fades, slowly (HIDE_MS in NotchBar). */
-.ss-notch:not(.ss-near) .ss-nbar { opacity: 0; transform: translateY(-100%); pointer-events: none;
+.ex-notch:not(.ex-near) .ex-nbar { opacity: 0; transform: translateY(-100%); pointer-events: none;
   transition: opacity .48s cubic-bezier(.4, 0, .6, 1), transform .48s cubic-bezier(.4, 0, .6, 1); }
 
 @media (prefers-reduced-motion: reduce) {
-  .ss-barpage *, .ss-barpage *::before, .ss-barpage *::after { transition: none !important; }
+  .ex-barpage *, .ex-barpage *::before, .ex-barpage *::after { transition: none !important; }
 }
 
 /* Popup mode: the display window's title bar settings popover, its right edge 8px inside the
    window's top right corner (bar.rs). */
-.ss-popup { position: fixed; inset: 0; }
-.ss-panchor { position: absolute; top: 0; right: 8px; width: 1px; height: 0; }
+.ex-popup { position: fixed; inset: 0; }
+.ex-panchor { position: absolute; top: 0; right: 8px; width: 1px; height: 0; }
 
 /* High contrast: the dot in the system's colour, no hairline. */
 @media (forced-colors: active) {
-  .ss-dot { forced-color-adjust: none; background: Highlight; box-shadow: none; }
-  .ss-tbar::after { display: none; }
+  .ex-dot { forced-color-adjust: none; background: Highlight; box-shadow: none; }
+  .ex-tbar::after { display: none; }
 }

@@ -1,39 +1,39 @@
 /* The display window. Only its top 40px show: the Mac's display covers the rest. */
-html:has(.ss-display), body:has(.ss-display), #root:has(.ss-display) { height: 100%; margin: 0; overflow: hidden; background: #202020; }
-.ss-display { color: var(--colorNeutralForeground1); font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
+html:has(.ex-display), body:has(.ex-display), #root:has(.ex-display) { height: 100%; margin: 0; overflow: hidden; background: #202020; }
+.ex-display { color: var(--colorNeutralForeground1); font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
 /* Fluent gives every portal (a tooltip, a menu) the provider's classes too: filling the page,
    one would cover it and take its clicks. */
-.ss-display:not([data-portal-node]) { height: 100%; background: #202020 !important; }
+.ex-display:not([data-portal-node]) { height: 100%; background: #202020 !important; }
 
-.ss-dtb { position: relative; height: 40px; display: flex; align-items: center; user-select: none; cursor: default;
+.ex-dtb { position: relative; height: 40px; display: flex; align-items: center; user-select: none; cursor: default;
   /* The brand's light, faintly, behind the Mac's name, and a hairline of the gradient along the
      bottom, where the Mac's display begins. */
-  background: radial-gradient(320px 64px at 0% 50%, rgb(var(--ss-rgb-brand) / .22), transparent 100%); }
-.ss-dtb::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; opacity: .75; pointer-events: none;
-  background: linear-gradient(90deg, var(--ss-start), var(--ss-mid) 30%, var(--ss-end) 60%, transparent); }
-.ss-dtb-title { display: flex; align-items: center; gap: 12px; height: 40px; padding-left: 16px; min-width: 0; }
-.ss-dtb-icon { width: 16px; height: 16px; pointer-events: none; flex-shrink: 0; }
-.ss-dtb-name { font-size: 12px; color: rgba(255, 255, 255, .86); white-space: nowrap; }
-.ss-dtb-data { font-size: 12px; color: var(--colorNeutralForeground3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ss-dtb-fill { flex: 1; height: 40px; }
+  background: radial-gradient(320px 64px at 0% 50%, rgb(var(--ex-rgb-brand) / .22), transparent 100%); }
+.ex-dtb::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; opacity: .75; pointer-events: none;
+  background: linear-gradient(90deg, var(--ex-start), var(--ex-mid) 30%, var(--ex-end) 60%, transparent); }
+.ex-dtb-title { display: flex; align-items: center; gap: 12px; height: 40px; padding-left: 16px; min-width: 0; }
+.ex-dtb-icon { width: 16px; height: 16px; pointer-events: none; flex-shrink: 0; }
+.ex-dtb-name { font-size: 12px; color: rgba(255, 255, 255, .86); white-space: nowrap; }
+.ex-dtb-data { font-size: 12px; color: var(--colorNeutralForeground3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ex-dtb-fill { flex: 1; height: 40px; }
 /* The window's top edge, over the title bar's top rows (not the caption buttons'): resizes it. */
-.ss-dtb-grip { position: absolute; left: 0; right: 184px; top: 0; height: 4px; cursor: n-resize; }
-.ss-dtb-caps { display: flex; }
-.ss-dtb-cap { width: 46px; height: 40px; padding: 0; border: 0; background: transparent; display: grid; place-items: center; cursor: default; }
-.ss-dtb-cap:hover { background: rgba(255, 255, 255, .08); }
-.ss-dtb-cap:active { background: rgba(255, 255, 255, .05); }
-.ss-dtb-cap.ss-dtb-close:hover { background: #c42b1c; }
-.ss-dtb-cap.ss-dtb-close:active { background: #b22a1b; }
-.ss-dtb-cap svg { width: 10px; height: 10px; stroke: #fff; stroke-width: 1; fill: none; }
-.ss-dtb-cap svg.ss-dtb-glyph { width: 16px; height: 16px; stroke: none; fill: currentColor; color: #fff; }
-.ss-dtb-cap:focus-visible { outline: 2px solid var(--colorStrokeFocus2); outline-offset: -2px; }
+.ex-dtb-grip { position: absolute; left: 0; right: 184px; top: 0; height: 4px; cursor: n-resize; }
+.ex-dtb-caps { display: flex; }
+.ex-dtb-cap { width: 46px; height: 40px; padding: 0; border: 0; background: transparent; display: grid; place-items: center; cursor: default; }
+.ex-dtb-cap:hover { background: rgba(255, 255, 255, .08); }
+.ex-dtb-cap:active { background: rgba(255, 255, 255, .05); }
+.ex-dtb-cap.ex-dtb-close:hover { background: #c42b1c; }
+.ex-dtb-cap.ex-dtb-close:active { background: #b22a1b; }
+.ex-dtb-cap svg { width: 10px; height: 10px; stroke: #fff; stroke-width: 1; fill: none; }
+.ex-dtb-cap svg.ex-dtb-glyph { width: 16px; height: 16px; stroke: none; fill: currentColor; color: #fff; }
+.ex-dtb-cap:focus-visible { outline: 2px solid var(--colorStrokeFocus2); outline-offset: -2px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .ss-display *, .ss-display *::before, .ss-display *::after { transition: none !important; }
+  .ex-display *, .ex-display *::before, .ex-display *::after { transition: none !important; }
 }
 
 /* High contrast: no brand light; the hairline in the system's colour. */
 @media (forced-colors: active) {
-  .ss-dtb { background: none; }
-  .ss-dtb::after { forced-color-adjust: none; background: CanvasText; opacity: 1; }
+  .ex-dtb { background: none; }
+  .ex-dtb::after { forced-color-adjust: none; background: CanvasText; opacity: 1; }
 }

@@ -124,7 +124,7 @@ pub fn picture_area(window: Area, stream: (u32, u32)) -> Area {
 }
 
 /// Whether the desktop goes in front as the pointer crosses to the Mac, decided by where the
-/// keyboard is. With one of Sidescreen's windows in front (`ours`), keys typed into its own web
+/// keyboard is. With one of Expand's windows in front (`ours`), keys typed into its own web
 /// views never reach the capture (seen 2026-11-19), so it steps aside, as before the display was
 /// embedded. Except when the keyboard `focus` is on the `embedded_viewer` (the viewer's window
 /// inside the display window; 0 for none): that was another app's window before it was embedded,
@@ -147,7 +147,7 @@ mod tests {
     }
 
     #[test]
-    fn the_keyboard_anywhere_else_in_sidescreen_steps_aside() {
+    fn the_keyboard_anywhere_else_in_expand_steps_aside() {
         // The display window's title bar, a menu of the bar over it, the main window.
         assert!(should_step_aside(true, TITLE_BAR, VIEWER));
         // Nothing has the keyboard.

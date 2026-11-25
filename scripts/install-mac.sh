@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds Sidescreen on the Mac, replaces /Applications/Sidescreen.app, signs it with the
+# Builds Expand on the Mac, replaces /Applications/Expand.app, signs it with the
 # private identity (so macOS keeps its permissions) and starts it. Run from anywhere.
 set -euo pipefail
 
@@ -10,11 +10,11 @@ export PATH="$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:/opt/homeb
 bash "$ROOT/scripts/build-display-helper.sh"
 bash "$ROOT/scripts/build-panel-helper.sh"
 (cd "$ROOT/app" && npm run tauri build -- --bundles app)
-cp "$ROOT/target/sidescreen-display" "$ROOT/target/sidescreen-panel"   "$ROOT/target/release/bundle/macos/Sidescreen.app/Contents/MacOS/"
+cp "$ROOT/target/expand-display" "$ROOT/target/expand-panel"   "$ROOT/target/release/bundle/macos/Expand.app/Contents/MacOS/"
 
-osascript -e 'tell application "Sidescreen" to quit' 2>/dev/null || true
+osascript -e 'tell application "Expand" to quit' 2>/dev/null || true
 sleep 3
-rm -rf /Applications/Sidescreen.app
-cp -R "$ROOT/target/release/bundle/macos/Sidescreen.app" /Applications/
-bash "$ROOT/scripts/sign-mac.sh" /Applications/Sidescreen.app
-open -a Sidescreen
+rm -rf /Applications/Expand.app
+cp -R "$ROOT/target/release/bundle/macos/Expand.app" /Applications/
+bash "$ROOT/scripts/sign-mac.sh" /Applications/Expand.app
+open -a Expand

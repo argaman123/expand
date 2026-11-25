@@ -1,4 +1,4 @@
-// Dev-only snapshots for live checks. With SIDESCREEN_PANEL_SNAPSHOT_DIR set when the helper
+// Dev-only snapshots for live checks. With EXPAND_PANEL_SNAPSHOT_DIR set when the helper
 // starts, the open panel's window is saved as DIR/panel-<n>.png whenever what it shows changes
 // (after 400 ms of quiet), and `snapshot <path>` is logged. Without the variable, nothing.
 
@@ -16,7 +16,7 @@ final class Snapshots {
     private var pending: DispatchWorkItem?
 
     private init() {
-        guard let path = ProcessInfo.processInfo.environment["SIDESCREEN_PANEL_SNAPSHOT_DIR"], !path.isEmpty
+        guard let path = ProcessInfo.processInfo.environment["EXPAND_PANEL_SNAPSHOT_DIR"], !path.isEmpty
         else {
             dir = nil
             return

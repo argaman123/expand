@@ -1,5 +1,5 @@
 // A small log for checking the panel on a Mac without looking at it:
-// ~/Library/Logs/Sidescreen/panel.log, emptied once it passes 64 KB. It records where the
+// ~/Library/Logs/Expand/panel.log, emptied once it passes 64 KB. It records where the
 // menu-bar item is, opening and closing, and what the state lines did. Never the pairing code:
 // states are logged as a summary only.
 
@@ -16,7 +16,7 @@ enum PanelLog {
         guard enabled else { return }
         let stamp = Date()
         queue.async {
-            let dir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/Sidescreen")
+            let dir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/Expand")
             let file = dir.appendingPathComponent("panel.log")
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             let size = (try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int) ?? 0

@@ -9,7 +9,7 @@ use std::time::Duration;
 /// The viewer has to ask Sunshine to pair before the PIN can be submitted, so keep trying.
 const PIN_ATTEMPTS: u32 = 20;
 const PIN_RETRY: Duration = Duration::from_millis(500);
-const CLIENT_NAME: &str = "Sidescreen PC";
+const CLIENT_NAME: &str = "Expand PC";
 
 enum Event {
     Message(Option<Message>),

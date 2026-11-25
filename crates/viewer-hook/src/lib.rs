@@ -1,6 +1,6 @@
 //! Loaded by Windows into the viewer (Moonlight) for an in-context window-event hook
-//! (`SetWinEventHook` with `WINEVENT_INCONTEXT`, set by `sidescreen_core::winwindow::Concealer`):
-//! [`sidescreen_viewer_event`] runs on the viewer's own thread, inside the call that makes, shows
+//! (`SetWinEventHook` with `WINEVENT_INCONTEXT`, set by `expand_core::winwindow::Concealer`):
+//! [`expand_viewer_event`] runs on the viewer's own thread, inside the call that makes, shows
 //! or moves its window, so its stream window is moved out of sight before Windows ever draws it
 //! on a monitor. Out of context, the move had to wait for the viewer's thread, which is busy
 //! right then (seen live: 70 ms on screen).
@@ -11,7 +11,7 @@
 pub const STREAM_CLASS: &str = "SDL_app";
 
 /// How far left of every monitor the window goes when there is no place beside its own monitor
-/// (as `sidescreen_core::layout::out_of_sight`).
+/// (as `expand_core::layout::out_of_sight`).
 pub const OUT_OF_SIGHT: i32 = 12_000;
 
 /// How far from its monitor the window waits, at least: more than its shadow reaches, so not a
@@ -92,7 +92,7 @@ mod hook {
     /// # Safety
     /// Called by Windows as a `WINEVENTPROC`.
     #[no_mangle]
-    pub unsafe extern "system" fn sidescreen_viewer_event(
+    pub unsafe extern "system" fn expand_viewer_event(
         _hook: HWINEVENTHOOK,
         _event: u32,
         window: HWND,
@@ -128,7 +128,7 @@ mod hook {
 }
 
 #[cfg(windows)]
-pub use hook::sidescreen_viewer_event;
+pub use hook::expand_viewer_event;
 
 #[cfg(test)]
 mod tests {
@@ -240,7 +240,7 @@ mod tests {
         });
         let window = HWND(rx.recv().unwrap() as *mut _);
         let started = Instant::now();
-        unsafe { sidescreen_viewer_event(HWINEVENTHOOK::default(), EVENT_OBJECT_SHOW, window, OBJID_WINDOW.0, CHILDID_SELF as i32, 0, 0) };
+        unsafe { expand_viewer_event(HWINEVENTHOOK::default(), EVENT_OBJECT_SHOW, window, OBJID_WINDOW.0, CHILDID_SELF as i32, 0, 0) };
         let took = started.elapsed();
         let landed_at = busy.join().unwrap();
         assert!(took < Duration::from_millis(500), "the hook waited {took:?} for the window's thread");
@@ -273,9 +273,9 @@ mod tests {
             GetWindowRect(w, &mut r).unwrap();
             (r.left, r.top, r.right, r.bottom)
         };
-        let (stream, other) = (make(w!("SDL_app")), make(w!("SidescreenHookTestOther")));
+        let (stream, other) = (make(w!("SDL_app")), make(w!("ExpandHookTestOther")));
         for w in [stream, other] {
-            unsafe { sidescreen_viewer_event(HWINEVENTHOOK::default(), EVENT_OBJECT_CREATE, w, OBJID_WINDOW.0, CHILDID_SELF as i32, 0, 0) };
+            unsafe { expand_viewer_event(HWINEVENTHOOK::default(), EVENT_OBJECT_CREATE, w, OBJID_WINDOW.0, CHILDID_SELF as i32, 0, 0) };
         }
         let (moved, left) = (rect(stream), rect(other));
         unsafe {

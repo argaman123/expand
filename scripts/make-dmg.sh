@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Builds the Mac release: Sidescreen.app with its display and panel helpers inside, packed in a DMG.
-# Output: target/release/bundle/dmg/Sidescreen_<version>_aarch64.dmg
+# Builds the Mac release: Expand.app with its display and panel helpers inside, packed in a DMG.
+# Output: target/release/bundle/dmg/Expand_<version>_aarch64.dmg
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PATH="$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$HOME/.cargo/bin:/opt/homebrew/bin:$PATH"

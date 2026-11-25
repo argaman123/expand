@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Builds sidescreen-panel, the menu-bar panel helper (macOS only).
-# Output: target/sidescreen-panel. The Tauri bundle copies it into Sidescreen.app/Contents/MacOS.
+# Builds expand-panel, the menu-bar panel helper (macOS only).
+# Output: target/expand-panel. The Tauri bundle copies it into Expand.app/Contents/MacOS.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 mkdir -p "$ROOT/target"
@@ -20,5 +20,5 @@ xcrun swiftc -O -swift-version 5 -parse-as-library \
   -target "$(uname -m)-apple-macos14.0" \
   -file-prefix-map "$ROOT=." \
   "$ROOT"/mac/panel/*.swift "$ICONS" \
-  -o "$ROOT/target/sidescreen-panel"
-echo "built: $ROOT/target/sidescreen-panel"
+  -o "$ROOT/target/expand-panel"
+echo "built: $ROOT/target/expand-panel"

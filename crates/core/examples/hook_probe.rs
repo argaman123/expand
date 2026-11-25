@@ -1,4 +1,4 @@
-//! Dev probe (Windows): sets the in-context hook (`sidescreen_viewer_hook.dll`, beside this
+//! Dev probe (Windows): sets the in-context hook (`expand_viewer_hook.dll`, beside this
 //! program, as the app does) on every Moonlight.exe process that starts in the next `seconds`, as
 //! the app's concealer does for its viewer, so its effect can be measured live against a Moonlight
 //! started by an installed app that hasn't got it (with `window_sampler` alongside).
@@ -22,11 +22,11 @@ fn main() {
     };
 
     let secs: u64 = std::env::args().nth(1).unwrap().parse().unwrap();
-    let path = std::env::current_exe().unwrap().with_file_name("sidescreen_viewer_hook.dll");
-    let path = if path.is_file() { path } else { std::env::current_exe().unwrap().parent().unwrap().with_file_name("sidescreen_viewer_hook.dll") };
+    let path = std::env::current_exe().unwrap().with_file_name("expand_viewer_hook.dll");
+    let path = if path.is_file() { path } else { std::env::current_exe().unwrap().parent().unwrap().with_file_name("expand_viewer_hook.dll") };
     let (module, proc): (HMODULE, WINEVENTPROC) = unsafe {
         let module = LoadLibraryW(&HSTRING::from(path.as_os_str())).expect("the hook library");
-        let hook = GetProcAddress(module, s!("sidescreen_viewer_event")).expect("its hook");
+        let hook = GetProcAddress(module, s!("expand_viewer_event")).expect("its hook");
         (module, std::mem::transmute::<usize, WINEVENTPROC>(hook as usize))
     };
     println!("hooking new Moonlight.exe processes for {secs} s with {}", path.display());

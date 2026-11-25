@@ -107,31 +107,31 @@ export function PairDialog({ target, peers, onClose }: { target: PairTarget | nu
 
   return (
     <Dialog open={target !== null} onOpenChange={(_, d) => !d.open && onClose()}>
-      <DialogSurface className="ss-dialog">
+      <DialogSurface className="ex-dialog">
         <DialogBody>
           <DialogTitle>{title}</DialogTitle>
           <DialogContent>
             {!entering && (
-              <div className="ss-found">
+              <div className="ex-found">
                 {found === null && <Spinner size="small" label="Looking for devices" labelPosition="after" />}
                 {found?.length === 0 && <Text>No devices found</Text>}
                 {found?.map((f) => {
                   const added = knownPeer(peers, f) !== undefined;
                   return (
-                    <button type="button" key={`${f.id}${f.host}`} className="ss-found-row" disabled={busy} onClick={() => void choose(f)}>
+                    <button type="button" key={`${f.id}${f.host}`} className="ex-found-row" disabled={busy} onClick={() => void choose(f)}>
                       <Laptop20Regular />
-                      <span className="ss-found-name">{f.name}</span>
-                      <span className="ss-found-host">{f.host}</span>
+                      <span className="ex-found-name">{f.name}</span>
+                      <span className="ex-found-host">{f.host}</span>
                       {f.pairing && <Badge appearance="tint" color="brand" size="small">Pairing</Badge>}
-                      {added && <span className="ss-found-added">Added</span>}
+                      {added && <span className="ex-found-added">Added</span>}
                     </button>
                   );
                 })}
-                {error && <Text className="ss-err">{error}</Text>}
+                {error && <Text className="ex-err">{error}</Text>}
               </div>
             )}
             {entering && (
-              <div className="ss-pair-form">
+              <div className="ex-pair-form">
                 {picked ? (
                   <Text>{picked.host}</Text>
                 ) : (
@@ -141,7 +141,7 @@ export function PairDialog({ target, peers, onClose }: { target: PairTarget | nu
                 )}
                 <Field label={`Code shown on ${picked?.name ?? "the device"}`} validationMessage={error ?? undefined} validationState={error ? "error" : "none"}>
                   <Input
-                    className="ss-code"
+                    className="ex-code"
                     value={code}
                     inputMode="numeric"
                     maxLength={6}

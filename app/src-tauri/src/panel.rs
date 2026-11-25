@@ -1,4 +1,4 @@
-//! The Mac's menu-bar panel: the native helper `sidescreen-panel`, and the JSON lines it and the
+//! The Mac's menu-bar panel: the native helper `expand-panel`, and the JSON lines it and the
 //! app exchange over its stdin and stdout.
 //!
 //! - The app writes one `PanelDto` per line to the helper's stdin, whenever something changed.
@@ -244,7 +244,7 @@ mod helper {
 
     /// The helper ships inside the app, next to its executable.
     fn helper_path() -> Option<std::path::PathBuf> {
-        let path = std::env::current_exe().ok()?.parent()?.join("sidescreen-panel");
+        let path = std::env::current_exe().ok()?.parent()?.join("expand-panel");
         path.exists().then_some(path)
     }
 
@@ -311,7 +311,7 @@ mod helper {
         let mut child = match launch(&exe) {
             Ok(child) => child,
             Err(e) => {
-                eprintln!("sidescreen: the panel did not start ({e}); using the menu instead");
+                eprintln!("expand: the panel did not start ({e}); using the menu instead");
                 LINE.lock().unwrap().take();
                 if !ending() {
                     on_gone(&app);
@@ -327,16 +327,16 @@ mod helper {
                 AfterExit::Stop => return,
                 AfterExit::Restart => {}
                 AfterExit::Tray => {
-                    eprintln!("sidescreen: the panel exited twice within {}s; using the menu instead", RESTART_WINDOW.as_secs());
+                    eprintln!("expand: the panel exited twice within {}s; using the menu instead", RESTART_WINDOW.as_secs());
                     break;
                 }
             }
             last_exit = Some(now);
-            eprintln!("sidescreen: the panel exited; starting it again");
+            eprintln!("expand: the panel exited; starting it again");
             match launch(&exe) {
                 Ok(next) => child = next,
                 Err(e) => {
-                    eprintln!("sidescreen: the panel did not start again ({e}); using the menu instead");
+                    eprintln!("expand: the panel did not start again ({e}); using the menu instead");
                     break;
                 }
             }
@@ -419,7 +419,7 @@ mod helper {
                 let app = app.clone();
                 tauri::async_runtime::spawn(async move {
                     if let Err(e) = crate::connect_pc(app.state::<Shared>(), key).await {
-                        eprintln!("sidescreen: connecting from the panel: {e}");
+                        eprintln!("expand: connecting from the panel: {e}");
                     }
                     let shared = app.state::<Shared>().inner().clone();
                     crate::push_panel(&app, &shared, true);
@@ -458,7 +458,7 @@ mod helper {
             }
             PanelAction::InstallMissing => {
                 if let Err(e) = crate::system::install_missing() {
-                    eprintln!("sidescreen: installing from the panel: {e}");
+                    eprintln!("expand: installing from the panel: {e}");
                 }
             }
             PanelAction::Quit => {
@@ -583,6 +583,7 @@ mod tests {
             start_display_on_connect: false,
             ctrl_as_cmd: true,
             reverse_scroll: true,
+            mac_sound: true,
             peer_addresses: Vec::new(),
             latency_ms: None,
             viewer_monitor: None,

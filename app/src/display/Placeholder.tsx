@@ -38,18 +38,18 @@ export function Placeholder({ status }: { status: Status | null }) {
   };
 
   return (
-    <div className={`ss-ph${mode?.full_screen ? " ss-ph-full" : ""}`} aria-live="polite">
+    <div className={`ex-ph${mode?.full_screen ? " ex-ph-full" : ""}`} aria-live="polite">
       {viewer ? null : failed ? (
-        <div className="ss-ph-fail">
-          <span className="ss-ph-part">{status?.part ?? "Display"}</span>
-          <span className="ss-ph-reason">{error ?? status?.reason ?? "failed"}</span>
-          <div className="ss-ph-acts">
+        <div className="ex-ph-fail">
+          <span className="ex-ph-part">{status?.part ?? "Display"}</span>
+          <span className="ex-ph-reason">{error ?? status?.reason ?? "failed"}</span>
+          <div className="ex-ph-acts">
             <Button appearance="primary" size="small" onClick={retry}>Retry</Button>
             <Button size="small" onClick={() => void displayStop().catch(() => {})}>Close</Button>
           </div>
         </div>
       ) : (
-        <div className="ss-ph-start">
+        <div className="ex-ph-start">
           <Spinner size="tiny" />
           <span>Starting</span>
         </div>

@@ -1,4 +1,4 @@
-<!-- Sidescreen's app icon, "Cross the edge": the tile split down the middle, the PC's graphite on
+<!-- Expand's app icon, "Cross the edge": the tile split down the middle, the PC's graphite on
      the left and the Mac's colour (the brand's "Shore", sky blue into violet) on the right, with the pointer passing over the seam.
      On Apple's 1024 grid (an 824 tile, 100 margin). The shadows are blur + offset + flood rather
      than feDropShadow so that every SVG renderer (librsvg included) draws them.

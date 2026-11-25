@@ -1,7 +1,7 @@
 //! Dev probe (Windows): can this hook library be loaded and set in context? Loads it, finds its
 //! hook, and sets it on this process only (nothing goes into another process).
 //!
-//! `hook_check <path to sidescreen_viewer_hook.dll>`
+//! `hook_check <path to expand_viewer_hook.dll>`
 
 #[cfg(windows)]
 fn main() {
@@ -17,8 +17,8 @@ fn main() {
             Err(e) => return println!("LoadLibraryW failed: {e}"),
         };
         println!("loaded at {:?}", module.0);
-        let Some(hook) = GetProcAddress(module, s!("sidescreen_viewer_event")) else {
-            return println!("no sidescreen_viewer_event: {:?}", GetLastError());
+        let Some(hook) = GetProcAddress(module, s!("expand_viewer_event")) else {
+            return println!("no expand_viewer_event: {:?}", GetLastError());
         };
         let proc: WINEVENTPROC = std::mem::transmute::<usize, WINEVENTPROC>(hook as usize);
         let h = SetWinEventHook(EVENT_OBJECT_CREATE, EVENT_OBJECT_CREATE, module, proc, std::process::id(), 0, WINEVENT_INCONTEXT);

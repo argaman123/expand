@@ -7,7 +7,7 @@ index b852f77..0fc16d3 100644
      (x.clamp(min_x, max_x), y.clamp(min_y, max_y))
  }
 +
-+/// Sidescreen: the position to compare the next pointer move against. Only positions on a
++/// Expand: the position to compare the next pointer move against. Only positions on a
 +/// screen are remembered: after a capture is released with the pointer pushed against the
 +/// edge, the reported positions lie beyond it, and remembering those meant pushing on never
 +/// crossed again until the pointer was moved back first.
@@ -24,7 +24,7 @@ index b852f77..0fc16d3 100644
 +}
 +
 +#[cfg(test)]
-+mod sidescreen_tests {
++mod expand_tests {
 +    use super::*;
 +
 +    // The PC's right-hand monitor, 2026-11-18 (physical pixels).

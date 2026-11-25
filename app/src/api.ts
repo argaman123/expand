@@ -75,6 +75,7 @@ export type Status = {
   ctrl_as_cmd?: boolean;
   /** PC: the wheel scrolls the Mac the other way round (missing from an older app). */
   reverse_scroll?: boolean;
+  mac_sound?: boolean;
 };
 
 export type SystemInfo = {
@@ -146,6 +147,7 @@ export const setPlacement = (side: Side, monitor: number | null) => invoke<void>
 export const setStartDisplayOnConnect = (enabled: boolean) => invoke<void>("set_start_display_on_connect", { enabled });
 export const setCtrlAsCmd = (enabled: boolean) => invoke<void>("set_ctrl_as_cmd", { enabled });
 export const setReverseScroll = (enabled: boolean) => invoke<void>("set_reverse_scroll", { enabled });
+export const setMacSound = (enabled: boolean) => invoke<void>("set_mac_sound", { enabled });
 /** The backend has no such command (one older than the switch calling it): Tauri's own rejection,
  *  `Command <name> not found`, and nothing else. */
 export const isMissingCommand = (e: unknown) => typeof e === "string" && /^Command [\w:|-]+ not found$/.test(e);

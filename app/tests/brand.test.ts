@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { BRAND, BRAND_ON, BRAND_STEPS, BRAND_TEXT, FILL, ICON_STOPS, brandRamp, contrast, luminance } from "../src/brand.ts";
 
-// What is on (tiles, switches): brand.css's --ss-on and the icon or thumb on it, at rest, hovered
+// What is on (tiles, switches): brand.css's --ex-on and the icon or thumb on it, at rest, hovered
 // (8% lighter) and pressed (10% darker).
 const BRAND_CSS = readFileSync(new URL("../src/brand.css", import.meta.url), "utf8");
 const token = (name: string) => BRAND_CSS.match(new RegExp(name + ": *(#[0-9a-fA-F]{6})"))![1];
@@ -21,7 +21,7 @@ test("the stops are the app icon's gradient (Shore): sky blue into violet", () =
   }
   // The icon's ends are pulled apart from the brand's: lighter at the start, deeper at the end.
   assert.ok(luminance(ICON_STOPS.start) > luminance(BRAND.start) && luminance(ICON_STOPS.end) < luminance(BRAND.end));
-  for (const [name, stop] of [["--ss-start", BRAND.start], ["--ss-mid", BRAND.mid], ["--ss-end", BRAND.end]]) assert.equal(token(name), stop);
+  for (const [name, stop] of [["--ex-start", BRAND.start], ["--ex-mid", BRAND.mid], ["--ex-end", BRAND.end]]) assert.equal(token(name), stop);
 });
 
 test("the ramp has Fluent's 16 steps with the fill at 80", () => {
@@ -74,11 +74,11 @@ test("brand text reads in every state on every surface it can sit on", () => {
 });
 
 test("brand.css: what is on is brand.ts's, and its icon reads at rest, hovered and pressed", () => {
-  const on = token("--ss-on");
-  const fg = token("--ss-on-fg");
+  const on = token("--ex-on");
+  const fg = token("--ex-on-fg");
   assert.equal(on, BRAND_ON.fill);
   assert.equal(fg, BRAND_ON.text);
-  assert.ok(BRAND_CSS.includes(`--ss-on-fill: linear-gradient(135deg, ${BRAND_ON.from}, ${BRAND_ON.to})`));
+  assert.ok(BRAND_CSS.includes(`--ex-on-fill: linear-gradient(135deg, ${BRAND_ON.from}, ${BRAND_ON.to})`));
   // At rest, hovered (5% darker) and pressed (12% darker): a fill this bright takes no lighter hover
   // under white.
   for (const end of [BRAND_ON.fill, BRAND_ON.from, BRAND_ON.to]) {

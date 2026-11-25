@@ -45,30 +45,30 @@ export function DisplayTitleBar({ status }: { status: Status | null }) {
     if (e.button === 0 && mode?.full_screen !== true) void getCurrentWindow().startResizeDragging("North").catch(() => {});
   };
   return (
-    <div className="ss-dtb" data-tauri-drag-region onContextMenu={menu}>
-      <div className="ss-dtb-title" data-tauri-drag-region>
-        <img className="ss-dtb-icon" src="/icon.png" alt="" width={16} height={16} draggable={false} />
-        <span className="ss-dtb-name" data-tauri-drag-region>{status?.peer_name ?? "Sidescreen"}</span>
+    <div className="ex-dtb" data-tauri-drag-region onContextMenu={menu}>
+      <div className="ex-dtb-title" data-tauri-drag-region>
+        <img className="ex-dtb-icon" src="/icon.png" alt="" width={16} height={16} draggable={false} />
+        <span className="ex-dtb-name" data-tauri-drag-region>{status?.peer_name ?? "Expand"}</span>
         {s && (
-          <span className="ss-dtb-data" data-tauri-drag-region>
+          <span className="ex-dtb-data" data-tauri-drag-region>
             {s.width} × {s.height} · {s.fps} fps
           </span>
         )}
       </div>
-      <div className="ss-dtb-fill" data-tauri-drag-region />
+      <div className="ex-dtb-fill" data-tauri-drag-region />
       {/* The window's top edge resizes it (Tauri's own strip there is hidden: it drew a grey line, display.rs). */}
-      <div className="ss-dtb-grip" aria-hidden onMouseDown={growFromTop} />
-      <div className="ss-dtb-caps">
-        <button type="button" className="ss-dtb-cap" aria-label="Display settings" onClick={settings}>
-          <Settings16Regular className="ss-dtb-glyph" />
+      <div className="ex-dtb-grip" aria-hidden onMouseDown={growFromTop} />
+      <div className="ex-dtb-caps">
+        <button type="button" className="ex-dtb-cap" aria-label="Display settings" onClick={settings}>
+          <Settings16Regular className="ex-dtb-glyph" />
         </button>
-        <button type="button" className="ss-dtb-cap" aria-label="Full screen" onClick={run(() => displayFullScreen())}>
-          <FullScreenMaximize16Regular className="ss-dtb-glyph" />
+        <button type="button" className="ex-dtb-cap" aria-label="Full screen" onClick={run(() => displayFullScreen())}>
+          <FullScreenMaximize16Regular className="ex-dtb-glyph" />
         </button>
-        <button type="button" className="ss-dtb-cap" aria-label="Minimize" onClick={run(displayMinimize)}>
+        <button type="button" className="ex-dtb-cap" aria-label="Minimize" onClick={run(displayMinimize)}>
           <svg viewBox="0 0 10 10"><path d="M0 5.5h10" /></svg>
         </button>
-        <button type="button" className="ss-dtb-cap ss-dtb-close" aria-label="Close display" onClick={run(displayStop)}>
+        <button type="button" className="ex-dtb-cap ex-dtb-close" aria-label="Close display" onClick={run(displayStop)}>
           <svg viewBox="0 0 10 10"><path d="M.5.5l9 9M9.5.5l-9 9" /></svg>
         </button>
       </div>

@@ -262,7 +262,7 @@ impl Local {
 /// Where files copied on the other computer land, so they can be pasted here. Emptied when
 /// sharing starts.
 pub fn landing_folder() -> PathBuf {
-    let folder = dirs::cache_dir().unwrap_or_else(std::env::temp_dir).join("sidescreen").join("clipboard");
+    let folder = dirs::cache_dir().unwrap_or_else(std::env::temp_dir).join("expand").join("clipboard");
     let _ = std::fs::remove_dir_all(&folder);
     let _ = std::fs::create_dir_all(&folder);
     folder

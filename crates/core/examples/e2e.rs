@@ -2,11 +2,11 @@
 //!   Mac:  e2e host                (run from a Terminal window so it has Screen Recording permission)
 //!   PC:   e2e client <mac-ip> [seconds-to-stay-connected]
 //! The host pairs with a fixed code, so only run it for testing.
-//! It reads and writes the settings file named by `SIDESCREEN_CONFIG`, and refuses to run without
+//! It reads and writes the settings file named by `EXPAND_CONFIG`, and refuses to run without
 //! one, so it never changes the app's own settings.
 
-use sidescreen_core::config::Config;
-use sidescreen_core::session::State;
+use expand_core::config::Config;
+use expand_core::session::State;
 
 /// The pairing code both sides use in this test tool.
 const CODE: &str = "000000";
@@ -18,8 +18,8 @@ fn load() -> (Config, std::path::PathBuf) {
 
 #[tokio::main]
 async fn main() {
-    if std::env::var_os("SIDESCREEN_CONFIG").filter(|p| !p.is_empty()).is_none() {
-        eprintln!("e2e: set SIDESCREEN_CONFIG to a settings file for this test, for example in a temporary folder.");
+    if std::env::var_os("EXPAND_CONFIG").filter(|p| !p.is_empty()).is_none() {
+        eprintln!("e2e: set EXPAND_CONFIG to a settings file for this test, for example in a temporary folder.");
         eprintln!("Without it, e2e would change the app's own settings and pairings.");
         std::process::exit(2);
     }
@@ -33,8 +33,8 @@ async fn main() {
 }
 
 async fn client(ip: &str, seconds: u64) {
-    use sidescreen_core::link::CONTROL_PORT;
-    use sidescreen_core::session::{client::run, engines::RealViewer};
+    use expand_core::link::CONTROL_PORT;
+    use expand_core::session::{client::run, engines::RealViewer};
     use tokio_util::sync::CancellationToken;
 
     let (mut cfg, path) = load();
@@ -68,8 +68,8 @@ async fn client(ip: &str, seconds: u64) {
 
 #[cfg(target_os = "macos")]
 async fn host() {
-    use sidescreen_core::link::{server::Server, PairGate, CONTROL_PORT};
-    use sidescreen_core::session::{engines::RealHostEngines, host::serve};
+    use expand_core::link::{server::Server, PairGate, CONTROL_PORT};
+    use expand_core::session::{engines::RealHostEngines, host::serve};
 
     struct AcceptAll;
     impl PairGate for AcceptAll {
@@ -101,7 +101,7 @@ async fn host() {
                     cfg.save(&path).expect("save settings");
                 }
                 println!("client connected");
-                let toward_pc = cfg.current_peer().map(|p| p.placement.side.opposite()).unwrap_or(sidescreen_core::side::Side::Right);
+                let toward_pc = cfg.current_peer().map(|p| p.placement.side.opposite()).unwrap_or(expand_core::side::Side::Right);
                 let mut engines = RealHostEngines::new(
                     data_dir.clone(),
                     cfg.sunshine_user.clone(),

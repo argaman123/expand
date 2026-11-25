@@ -4,10 +4,10 @@
 #[cfg(target_os = "macos")]
 #[tokio::main]
 async fn main() {
-    use sidescreen_core::{macdisplay, sunshine};
+    use expand_core::{macdisplay, sunshine};
     use std::time::Duration;
 
-    let dir = std::env::temp_dir().join("sidescreen-smoke");
+    let dir = std::env::temp_dir().join("expand-smoke");
     std::fs::create_dir_all(&dir).unwrap();
 
     // Run from inside the app bundle's folder, or the helper is not found.
@@ -18,12 +18,12 @@ async fn main() {
     let exe = sunshine::find_exe().expect("sunshine not found");
     let conf = sunshine::conf_path(&dir);
     std::fs::write(&conf, sunshine::conf_text(&id.to_string(), &dir)).unwrap();
-    sunshine::set_credentials(&exe, &conf, "sidescreen", "smoke-test-pass").await.expect("set credentials");
+    sunshine::set_credentials(&exe, &conf, "expand", "smoke-test-pass").await.expect("set credentials");
 
     let mut host = sunshine::Host::spawn(&exe, &conf, &sunshine::log_path(&dir)).await.expect("spawn sunshine");
     let ready = host.wait_ready(Duration::from_secs(15)).await;
     println!("sunshine ready: {ready:?}");
-    let pin = host.submit_pin("sidescreen", "smoke-test-pass", "1234", "smoke", 0).await;
+    let pin = host.submit_pin("expand", "smoke-test-pass", "1234", "smoke", 0).await;
     println!("submit_pin with nothing pairing: {pin:?}");
 
     host.kill().await;

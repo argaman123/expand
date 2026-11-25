@@ -3,61 +3,61 @@
    there) and mac/panel/Brand.swift; the icon's in design/icons. On :root, so Fluent's portals
    (the panels, menus and dialogs) have it too. */
 :root {
-  --ss-start: #3aa8ff;
-  --ss-mid: #5d8bff;
-  --ss-end: #8a5cf6;
+  --ex-start: #3aa8ff;
+  --ex-mid: #5d8bff;
+  --ex-end: #8a5cf6;
   /* A thin line or ring in the brand colour that reads on the dark window. */
-  --ss-brand-line: #5d8bff;
+  --ex-brand-line: #5d8bff;
   /* The gradient as on the icon, from the top left; along a line: down a vertical one, across a
      horizontal one. */
-  --ss-grad: linear-gradient(135deg, var(--ss-start), var(--ss-mid) 55%, var(--ss-end));
-  --ss-grad-down: linear-gradient(180deg, var(--ss-start), var(--ss-mid) 55%, var(--ss-end));
-  --ss-grad-across: linear-gradient(90deg, var(--ss-start), var(--ss-mid) 55%, var(--ss-end));
+  --ex-grad: linear-gradient(135deg, var(--ex-start), var(--ex-mid) 55%, var(--ex-end));
+  --ex-grad-down: linear-gradient(180deg, var(--ex-start), var(--ex-mid) 55%, var(--ex-end));
+  --ex-grad-across: linear-gradient(90deg, var(--ex-start), var(--ex-mid) 55%, var(--ex-end));
   /* The brand's light, as "r g b" for rgb(var(--…) / alpha): the glow round the crossing edge and
      the bar's dot, and the brand's own glow (the display title bar's light). */
-  --ss-rgb-glow: 129 165 255;
-  --ss-rgb-brand: 93 139 255;
-  /* The Mac's light (pc.css .ss-aura-light): its bright core at the edge, the wash over the
+  --ex-rgb-glow: 129 165 255;
+  --ex-rgb-brand: 93 139 255;
+  /* The Mac's light (pc.css .ex-aura-light): its bright core at the edge, the wash over the
      MacBook's side, and the faint reach into the PC's side. */
-  --ss-rgb-core: 140 186 255;
-  --ss-rgb-core-out: 118 168 255;
-  --ss-rgb-wash: 92 146 250;
-  --ss-rgb-wash-out: 104 128 240;
-  --ss-rgb-reach: 58 168 255;
+  --ex-rgb-core: 140 186 255;
+  --ex-rgb-core-out: 118 168 255;
+  --ex-rgb-wash: 92 146 250;
+  --ex-rgb-wash-out: 104 128 240;
+  --ex-rgb-reach: 58 168 255;
   /* The monitors' screens: one wallpaper across them, light from the top left, a little colour
      toward the bottom right, over a dark tinted base. */
-  --ss-rgb-wall-a: 58 168 255;
-  --ss-rgb-wall-b: 138 92 246;
-  --ss-wall-base: #1d2a52;
+  --ex-rgb-wall-a: 58 168 255;
+  --ex-rgb-wall-b: 138 92 246;
+  --ex-wall-base: #1d2a52;
   /* The wallpaper's sky: an even diagonal from a deep blue to a deep violet, no grey middle. */
-  --ss-wall-sky: linear-gradient(150deg, #1e3f78 0%, #26408a 38%, #2f3a8a 68%, #38318a 100%);
+  --ex-wall-sky: linear-gradient(150deg, #1e3f78 0%, #26408a 38%, #2f3a8a 68%, #38318a 100%);
   /* The Mac's screen (the MacBook's lid, the Mac's display on a monitor): a light, even wallpaper in
      the brand's blues, no white middle. */
-  --ss-macwall: radial-gradient(140% 120% at 10% 10%, rgb(120 196 255 / .35), transparent 80%),
+  --ex-macwall: radial-gradient(140% 120% at 10% 10%, rgb(120 196 255 / .35), transparent 80%),
     linear-gradient(150deg, #9ccbff, #98b8ff 50%, #aaa6ff);
   /* What is on (the tiles, the switches): the screens' own blue, brighter (the app's main colour;
      violet is only a tint here and there), and the icon or thumb on it (4.5:1
      or more; brand.ts BRAND_ON, tested). */
-  --ss-on: #4f6bdb;
-  --ss-on-fg: #ffffff;
+  --ex-on: #4f6bdb;
+  --ex-on-fg: #ffffff;
   /* A tile's fill: flat, as Windows' own, with the slightest sheen. */
-  --ss-on-fill: linear-gradient(135deg, #4f6bdb, #4a65d2);
+  --ex-on-fill: linear-gradient(135deg, #4f6bdb, #4a65d2);
   /* Behind a selected monitor button, inside its ring. */
-  --ss-sel-fill: rgb(45 56 81 / .96);
+  --ex-sel-fill: rgb(45 56 81 / .96);
 }
 
 /* A switch that is on: the "on" colour, solid, with its thumb in the colour that reads on it
    (round 3: the gradient is kept for the crossing edge alone). Fluent portals the panels out of
    the page's root, with the provider's class. */
-:is(.ss-provider, .ss-display, .ss-barpage) .fui-Switch__input:enabled:checked ~ .fui-Switch__indicator {
-  background: var(--ss-on) !important; border-color: transparent !important; color: var(--ss-on-fg) !important; }
-:is(.ss-provider, .ss-display, .ss-barpage) .fui-Switch__input:enabled:checked:hover ~ .fui-Switch__indicator {
-  background: linear-gradient(rgb(0 0 0 / .05), rgb(0 0 0 / .05)), var(--ss-on) !important; }
-:is(.ss-provider, .ss-display, .ss-barpage) .fui-Switch__input:enabled:checked:active ~ .fui-Switch__indicator {
-  background: linear-gradient(rgb(0 0 0 / .12), rgb(0 0 0 / .12)), var(--ss-on) !important; }
+:is(.ex-provider, .ex-display, .ex-barpage) .fui-Switch__input:enabled:checked ~ .fui-Switch__indicator {
+  background: var(--ex-on) !important; border-color: transparent !important; color: var(--ex-on-fg) !important; }
+:is(.ex-provider, .ex-display, .ex-barpage) .fui-Switch__input:enabled:checked:hover ~ .fui-Switch__indicator {
+  background: linear-gradient(rgb(0 0 0 / .05), rgb(0 0 0 / .05)), var(--ex-on) !important; }
+:is(.ex-provider, .ex-display, .ex-barpage) .fui-Switch__input:enabled:checked:active ~ .fui-Switch__indicator {
+  background: linear-gradient(rgb(0 0 0 / .12), rgb(0 0 0 / .12)), var(--ex-on) !important; }
 @media (forced-colors: active) {
-  :is(.ss-provider, .ss-display, .ss-barpage) .fui-Switch__input:enabled:checked ~ .fui-Switch__indicator,
-  :is(.ss-provider, .ss-display, .ss-barpage) .fui-Switch__input:enabled:checked:hover ~ .fui-Switch__indicator,
-  :is(.ss-provider, .ss-display, .ss-barpage) .fui-Switch__input:enabled:checked:active ~ .fui-Switch__indicator {
+  :is(.ex-provider, .ex-display, .ex-barpage) .fui-Switch__input:enabled:checked ~ .fui-Switch__indicator,
+  :is(.ex-provider, .ex-display, .ex-barpage) .fui-Switch__input:enabled:checked:hover ~ .fui-Switch__indicator,
+  :is(.ex-provider, .ex-display, .ex-barpage) .fui-Switch__input:enabled:checked:active ~ .fui-Switch__indicator {
     forced-color-adjust: none; background: Highlight !important; border-color: Highlight !important; color: HighlightText !important; }
 }

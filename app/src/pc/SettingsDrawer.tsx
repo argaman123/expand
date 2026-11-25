@@ -109,23 +109,23 @@ export function SettingsDrawer({
 
   return (
     <>
-      <div className={`ss-scrim${open ? " on" : ""}`} onClick={close} />
-      <InlineDrawer open={open} position="end" size="small" className="ss-drawer" ref={drawer}>
+      <div className={`ex-scrim${open ? " on" : ""}`} onClick={close} />
+      <InlineDrawer open={open} position="end" size="small" className="ex-drawer" ref={drawer}>
         <DrawerHeader>
           <DrawerHeaderTitle action={<Button appearance="subtle" aria-label="Close" icon={<Dismiss24Regular />} onClick={close} />}>
             Settings
           </DrawerHeaderTitle>
         </DrawerHeader>
-        <DrawerBody className="ss-dbody">
+        <DrawerBody className="ex-dbody">
           <section>
             <h4>App</h4>
-            <div className="ss-card">
-              <div className="ss-cardrow">
+            <div className="ex-card">
+              <div className="ex-cardrow">
                 <label htmlFor={ids.auto}>Connect automatically</label>
                 <Switch id={ids.auto} checked={status.auto_connect} onChange={(_, d) => change(() => setAutoConnect(d.checked))} />
               </div>
               <Divider />
-              <div className="ss-cardrow">
+              <div className="ex-cardrow">
                 <label htmlFor={ids.display}>Start the display when connected</label>
                 <Switch
                   id={ids.display}
@@ -135,7 +135,7 @@ export function SettingsDrawer({
                 />
               </div>
               <Divider />
-              <div className="ss-cardrow">
+              <div className="ex-cardrow">
                 <label htmlFor={ids.login}>Start when I sign in</label>
                 <Switch
                   id={ids.login}
@@ -145,7 +145,7 @@ export function SettingsDrawer({
                 />
               </div>
               <Divider />
-              <div className="ss-cardrow">
+              <div className="ex-cardrow">
                 <label htmlFor={ids.tray}>Keep running in the tray</label>
                 <Switch id={ids.tray} checked={status.close_to_tray} onChange={(_, d) => change(() => setCloseToTray(d.checked))} />
               </div>
@@ -153,16 +153,16 @@ export function SettingsDrawer({
           </section>
           <section>
             <h4>About</h4>
-            <div className="ss-card">
-              <div className="ss-cardrow">
-                <span>{`Sidescreen ${version}`.trim()}</span>
+            <div className="ex-card">
+              <div className="ex-cardrow">
+                <span>{`Expand ${version}`.trim()}</span>
                 {update}
               </div>
             </div>
           </section>
           {error ? (
-            <ErrorLine className="ss-header-err ss-drawer-err" failure={error} />
-          ) : checkError && <div className="ss-header-err ss-drawer-err" title={checkError}>{checkError}</div>}
+            <ErrorLine className="ex-header-err ex-drawer-err" failure={error} />
+          ) : checkError && <div className="ex-header-err ex-drawer-err" title={checkError}>{checkError}</div>}
         </DrawerBody>
       </InlineDrawer>
     </>

@@ -1,9 +1,9 @@
-# Builds the Windows installer: target/release/bundle/nsis/Sidescreen_<version>_x64-setup.exe
+# Builds the Windows installer: target/release/bundle/nsis/Expand_<version>_x64-setup.exe
 #
 # With the updater's signing key it also signs the installer (...-setup.exe.sig) and writes
 # latest.json beside it. Upload latest.json with the installer, under exactly that name.
 # The key is TAURI_SIGNING_PRIVATE_KEY or TAURI_SIGNING_PRIVATE_KEY_PATH if set, otherwise
-# %USERPROFILE%\.sidescreen-signing\sidescreen.key (made with `tauri signer generate`, no
+# %USERPROFILE%\.expand-signing\expand.key (made with `tauri signer generate`, no
 # password). Without a key the installer is built unsigned: it installs by hand, not as an update.
 #
 # Usage: scripts\build-windows.ps1 [-Notes "release notes for latest.json"]
@@ -17,10 +17,10 @@ $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $app = Join-Path $root "app"
 $version = (Get-Content (Join-Path $app "src-tauri\tauri.conf.json") -Raw | ConvertFrom-Json).version
 $nsis = Join-Path $root "target\release\bundle\nsis"
-$installer = Join-Path $nsis "Sidescreen_${version}_x64-setup.exe"
+$installer = Join-Path $nsis "Expand_${version}_x64-setup.exe"
 $manifest = Join-Path $nsis "latest.json"
 
-$keyFile = Join-Path $HOME ".sidescreen-signing\sidescreen.key"
+$keyFile = Join-Path $HOME ".expand-signing\expand.key"
 if ($env:TAURI_SIGNING_PRIVATE_KEY_PATH) { $keyFile = $env:TAURI_SIGNING_PRIVATE_KEY_PATH }
 $loadedKey = $false
 if (-not $env:TAURI_SIGNING_PRIVATE_KEY -and (Test-Path $keyFile)) {
@@ -34,7 +34,7 @@ $buildArgs = @("run", "tauri", "build", "--", "--bundles", "nsis")
 $extraConfig = $null
 if ($sign) {
     # Updater artifacts stay off in tauri.conf.json, so builds without the key (and the Mac's) work.
-    $extraConfig = Join-Path ([IO.Path]::GetTempPath()) "sidescreen-updater-$PID.json"
+    $extraConfig = Join-Path ([IO.Path]::GetTempPath()) "expand-updater-$PID.json"
     Set-Content -Path $extraConfig -Value '{ "bundle": { "createUpdaterArtifacts": true } }' -Encoding ascii
     $buildArgs += @("--config", $extraConfig)
 } else {

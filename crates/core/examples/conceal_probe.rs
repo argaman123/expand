@@ -6,13 +6,13 @@
 //! `bare` starts it as before round 3 (no hidden start, no concealer) for comparison. Run it from
 //! a portable copy of Moonlight (a `portable.dat` beside it, and that folder as the working
 //! directory) so the installed Moonlight's settings are never touched. With
-//! `SIDESCREEN_TRACE_WINDOWS=1` and `SIDESCREEN_CONFIG` set, the concealer's own trace goes to
+//! `EXPAND_TRACE_WINDOWS=1` and `EXPAND_CONFIG` set, the concealer's own trace goes to
 //! `windows-trace.log` beside that config.
 
 #[cfg(windows)]
 fn main() {
-    use sidescreen_core::layout::shows_on;
-    use sidescreen_core::share::geometry::Area;
+    use expand_core::layout::shows_on;
+    use expand_core::share::geometry::Area;
     use std::collections::HashMap;
     use std::time::{Duration, Instant};
     use windows::Win32::Foundation::{BOOL, HWND, LPARAM, RECT};
@@ -23,21 +23,21 @@ fn main() {
     let bare = args.get(5).is_some_and(|a| a == "bare");
     // `reveal`: end as the display's fallback does (the windows given back), and see what shows.
     let reveal = args.get(5).is_some_and(|a| a == "reveal");
-    sidescreen_core::sharelog::enable();
+    expand_core::sharelog::enable();
 
     let exe = std::path::Path::new(exe);
     let moonlight_args: Vec<String> = match mode {
-        "list" => sidescreen_core::moonlight::list_args(host),
+        "list" => expand_core::moonlight::list_args(host),
         // A PIN no Sunshine waits for.
-        "pair" => sidescreen_core::moonlight::pair_args(host, "0000"),
+        "pair" => expand_core::moonlight::pair_args(host, "0000"),
         _ => vec!["stream".into(), host.clone(), "Desktop".into(), "--display-mode".into(), "windowed".into()],
     };
     enum Run {
-        Hidden(sidescreen_core::moonlight::hidden::Child),
+        Hidden(expand_core::moonlight::hidden::Child),
         Plain(std::process::Child),
     }
     let run = if (mode == "pair" || mode == "stream") && !bare {
-        Run::Hidden(sidescreen_core::moonlight::hidden::Child::spawn(exe, &moonlight_args).unwrap())
+        Run::Hidden(expand_core::moonlight::hidden::Child::spawn(exe, &moonlight_args).unwrap())
     } else {
         Run::Plain(std::process::Command::new(exe).args(&moonlight_args).spawn().unwrap())
     };
@@ -45,14 +45,14 @@ fn main() {
         Run::Hidden(c) => c.pid(),
         Run::Plain(c) => c.id(),
     };
-    let concealer = (!bare).then(|| sidescreen_core::winwindow::Concealer::start(pid));
+    let concealer = (!bare).then(|| expand_core::winwindow::Concealer::start(pid));
 
     unsafe extern "system" fn collect(window: HWND, out: LPARAM) -> BOOL {
         let list = &mut *(out.0 as *mut Vec<isize>);
         list.push(window.0 as isize);
         BOOL(1)
     }
-    let monitors = sidescreen_core::winwindow::monitors();
+    let monitors = expand_core::winwindow::monitors();
     let started = Instant::now();
     // Per window: its class, when it was last seen showing, and how long it showed in all.
     let mut seen: HashMap<isize, (String, Option<Instant>, Duration, u32)> = HashMap::new();

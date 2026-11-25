@@ -18,7 +18,7 @@ const MAC_ASPECT = 0.64;
  *  monitor's width. */
 export const LID_SCREEN_SHARE = 0.906;
 /** The stand's height, from the floor to the screens' bottom, as a share of the tallest screen's
- *  height: the one knob for how high the monitors stand (pc.css `--ss-stand-neck` overrides it, for
+ *  height: the one knob for how high the monitors stand (pc.css `--ex-stand-neck` overrides it, for
  *  trying values). A MacBook under a monitor stands in front of it. */
 export const STAND_NECK = 0.19;
 /** The drawing's proportions, each overridable (Desk.tsx reads pc.css knobs for them, to try values):

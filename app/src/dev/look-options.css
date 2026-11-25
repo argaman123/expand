@@ -3,7 +3,7 @@
 
 /* The monitors' wallpaper, C · Evening sky, still (`?wall=c`), until the owner confirms the
    aurora: a deep diagonal from blue to violet with a soft light high on the left. */
-html[data-wall="c"] .ss-wall-pic::before { animation: none;
+html[data-wall="c"] .ex-wall-pic::before { animation: none;
   background:
     radial-gradient(45% 55% at 22% 18%, rgb(58 168 255 / .38), transparent 70%),
     radial-gradient(50% 50% at 85% 90%, rgb(138 92 246 / .3), transparent 70%),

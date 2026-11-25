@@ -31,7 +31,7 @@ fn main() {
     let rt = tokio::runtime::Runtime::new().unwrap();
     for (first, second) in [(SW_SHOWNORMAL, SW_SHOW), (SW_SHOWNORMAL, SW_SHOWNA), (SW_SHOW, SW_SHOW), (SW_SHOWNORMAL, SW_SHOWNORMAL)] {
         let args = vec!["child".to_string(), first.0.to_string(), second.0.to_string()];
-        let child = sidescreen_core::moonlight::hidden::Child::spawn(&me, &args).unwrap();
+        let child = expand_core::moonlight::hidden::Child::spawn(&me, &args).unwrap();
         let code = rt.block_on(child.wait()).unwrap();
         println!(
             "first ShowWindow({}) -> {}, then ShowWindow({}) -> {}",

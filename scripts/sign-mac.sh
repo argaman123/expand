@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Signs Sidescreen.app with a private identity made on this Mac, so macOS keeps the app's
+# Signs Expand.app with a private identity made on this Mac, so macOS keeps the app's
 # permissions (Screen Recording, Accessibility) across updates. Without it,
 # every build gets a new ad-hoc signature and macOS treats it as a different app.
 #
-# The identity lives in its own keychain under ~/.sidescreen-signing; the login keychain, the
+# The identity lives in its own keychain under ~/.expand-signing; the login keychain, the
 # keychain search list and the system's trust settings are left alone.
 set -euo pipefail
 
-APP="${1:-/Applications/Sidescreen.app}"
-DIR="$HOME/.sidescreen-signing"
+APP="${1:-/Applications/Expand.app}"
+DIR="$HOME/.expand-signing"
 KC="$DIR/signing.keychain-db"
-NAME="Sidescreen Local Signing"
+NAME="Expand Local Signing"
 
 mkdir -p "$DIR"
 chmod 700 "$DIR"

@@ -27,20 +27,36 @@ pub fn find_exe() -> Option<PathBuf> {
     candidates.into_iter().find(|p| p.is_file())
 }
 
-/// Moonlight always streams in a window of its own: Sidescreen's display window holds it, and
-/// `window_mode` says whether that window fills a monitor.
-/// Whether the Mac scrolls the other way round in the display (the PC's Reverse scrolling
-/// setting, on by default; the app keeps it up to date with [`set_reverse_scroll`]).
-static REVERSE_SCROLL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
-
-/// The Reverse scrolling setting, for the next stream started ([`Viewer::spawn`]).
-pub fn set_reverse_scroll(on: bool) {
-    REVERSE_SCROLL.store(on, std::sync::atomic::Ordering::Relaxed);
+/// The PC's own choices for the stream, each said either way so Moonlight's saved ones never
+/// decide: the Mac scrolls the other way round (Reverse scrolling), and the Mac's sound plays on
+/// the PC (Mac sound). Both on by default, as the settings are.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Prefs {
+    pub reverse_scroll: bool,
+    pub sound_here: bool,
 }
 
-/// What the stream starts with. `reverse_scroll` is said either way, so Moonlight's own saved
-/// choice never decides.
-pub fn stream_args(host: &str, s: &StreamSettings, reverse_scroll: bool) -> Vec<String> {
+impl Default for Prefs {
+    fn default() -> Prefs {
+        Prefs { reverse_scroll: true, sound_here: true }
+    }
+}
+
+/// What the next stream started uses ([`Viewer::spawn`]); the app keeps it up to date.
+static PREFS: std::sync::Mutex<Prefs> = std::sync::Mutex::new(Prefs { reverse_scroll: true, sound_here: true });
+
+/// The settings, for the next stream started.
+pub fn set_prefs(prefs: Prefs) {
+    *PREFS.lock().unwrap() = prefs;
+}
+
+fn prefs() -> Prefs {
+    *PREFS.lock().unwrap()
+}
+
+/// Moonlight always streams in a window of its own: Expand's display window holds it, and
+/// `window_mode` says whether that window fills a monitor.
+pub fn stream_args(host: &str, s: &StreamSettings, prefs: Prefs) -> Vec<String> {
     [
         "stream", host, APP_NAME,
         "--resolution", &format!("{}x{}", s.width, s.height),
@@ -49,7 +65,9 @@ pub fn stream_args(host: &str, s: &StreamSettings, reverse_scroll: bool) -> Vec<
         "--display-mode", "windowed",
         "--absolute-mouse",
         "--capture-system-keys", "never",
-        if reverse_scroll { "--reverse-scroll-direction" } else { "--no-reverse-scroll-direction" },
+        if prefs.reverse_scroll { "--reverse-scroll-direction" } else { "--no-reverse-scroll-direction" },
+        if prefs.sound_here { "--no-audio-on-host" } else { "--audio-on-host" },
+        "--no-mute-on-focus-loss",
     ]
     .iter()
     .map(|a| a.to_string())
@@ -86,9 +104,9 @@ pub fn paired_from_list(exit_code: Option<i32>, stderr: &str) -> Option<bool> {
     }
 }
 
-/// Whether the stream's viewer gets the in-context hook (`sidescreen_viewer_hook.dll`, which
+/// Whether the stream's viewer gets the in-context hook (`expand_viewer_hook.dll`, which
 /// keeps its stream window out of sight from the moment it is made): unless
-/// `SIDESCREEN_VIEWER_HOOK=0` (`hook`) or `SIDESCREEN_VIEWER_PLAIN=1` (`plain`), and only for a
+/// `EXPAND_VIEWER_HOOK=0` (`hook`) or `EXPAND_VIEWER_PLAIN=1` (`plain`), and only for a
 /// viewer built for the same machine as this app (`viewer_machine`, from [`exe_machine`]: our
 /// library can't go into another). Without it, the window is moved from outside, a moment late.
 pub fn viewer_hook_wanted(hook: Option<&std::ffi::OsStr>, plain: Option<&std::ffi::OsStr>, viewer_machine: Option<u16>) -> bool {
@@ -191,7 +209,7 @@ pub struct Viewer {
 
 /// Whether the stream starts hidden (its launcher never shows, [`Viewer::spawn`]): only when its
 /// windows go into the display window (`embedding`), which is what shows the user what happens
-/// (else the viewer is all there is to see), and unless `SIDESCREEN_VIEWER_PLAIN=1` (`plain`; dev
+/// (else the viewer is all there is to see), and unless `EXPAND_VIEWER_PLAIN=1` (`plain`; dev
 /// only, to compare with the plain start in one live run).
 pub fn stream_starts_hidden(embedding: bool, plain: Option<&std::ffi::OsStr>) -> bool {
     embedding && !plain.is_some_and(|v| v == "1")
@@ -209,13 +227,13 @@ impl Viewer {
         #[cfg(windows)]
         let viewer = {
             let how = hidden::Start { env: &stream_env(), hide_first: hidden, log: true };
-            let (child, log) = hidden::Child::start(exe, &stream_args(host, s, REVERSE_SCROLL.load(std::sync::atomic::Ordering::Relaxed)), &how)?;
+            let (child, log) = hidden::Child::start(exe, &stream_args(host, s, prefs()), &how)?;
             Viewer { child, log }
         };
         #[cfg(not(windows))]
         let viewer = {
             let _ = hidden;
-            let mut cmd = command(exe, stream_args(host, s, REVERSE_SCROLL.load(std::sync::atomic::Ordering::Relaxed)));
+            let mut cmd = command(exe, stream_args(host, s, prefs()));
             cmd.envs(stream_env());
             Viewer { child: cmd.spawn()? }
         };
@@ -480,13 +498,14 @@ mod tests {
     #[test]
     fn stream_args_windowed() {
         assert_eq!(
-            stream_args("192.168.1.50", &settings(WindowMode::Windowed), false),
+            stream_args("192.168.1.50", &settings(WindowMode::Windowed), Prefs { reverse_scroll: false, sound_here: true }),
             [
                 "stream", "192.168.1.50", "Desktop",
                 "--resolution", "2560x1440", "--fps", "60", "--bitrate", "30000",
                 "--display-mode", "windowed",
                 "--absolute-mouse", "--capture-system-keys", "never",
                 "--no-reverse-scroll-direction",
+                "--no-audio-on-host", "--no-mute-on-focus-loss",
             ]
         );
     }
@@ -495,16 +514,34 @@ mod tests {
     /// the display window too. Said either way, so Moonlight's own saved choice never decides.
     #[test]
     fn the_stream_scrolls_the_way_the_setting_says() {
-        let on = stream_args("h", &settings(WindowMode::Windowed), true);
+        let on = stream_args("h", &settings(WindowMode::Windowed), Prefs { reverse_scroll: true, sound_here: true });
         assert!(on.contains(&"--reverse-scroll-direction".to_string()));
         assert!(!on.contains(&"--no-reverse-scroll-direction".to_string()));
-        assert!(stream_args("h", &settings(WindowMode::Windowed), false).contains(&"--no-reverse-scroll-direction".to_string()));
+        let off = stream_args("h", &settings(WindowMode::Windowed), Prefs { reverse_scroll: false, sound_here: true });
+        assert!(off.contains(&"--no-reverse-scroll-direction".to_string()));
+    }
+
+    /// Mac sound (the PC's setting, on by default): the Mac's sound plays on the PC, also while
+    /// another window is in front; off, it stays on the Mac. Said either way, as above.
+    #[test]
+    fn the_macs_sound_plays_where_the_setting_says() {
+        let here = stream_args("h", &settings(WindowMode::Windowed), Prefs { reverse_scroll: true, sound_here: true });
+        assert!(here.contains(&"--no-audio-on-host".to_string()));
+        assert!(here.contains(&"--no-mute-on-focus-loss".to_string()));
+        let there = stream_args("h", &settings(WindowMode::Windowed), Prefs { reverse_scroll: true, sound_here: false });
+        assert!(there.contains(&"--audio-on-host".to_string()));
+        assert!(!there.contains(&"--no-audio-on-host".to_string()));
+    }
+
+    #[test]
+    fn the_prefs_start_as_the_settings_do() {
+        assert_eq!(Prefs::default(), Prefs { reverse_scroll: true, sound_here: true });
     }
 
     #[test]
     fn full_screen_still_streams_in_a_window() {
         // The display window goes full screen around it.
-        let args = stream_args("h", &settings(WindowMode::Borderless), false);
+        let args = stream_args("h", &settings(WindowMode::Borderless), Prefs::default());
         let i = args.iter().position(|a| a == "--display-mode").unwrap();
         assert_eq!(args[i + 1], "windowed");
     }
@@ -587,8 +624,8 @@ mod tests {
     #[cfg(windows)]
     #[tokio::test]
     async fn a_hidden_process_gets_the_extra_environment() {
-        let args: Vec<String> = ["/c", "if", "%SIDESCREEN_PROBE%==yes", "(exit", "7)", "else", "(exit", "1)"].iter().map(|a| a.to_string()).collect();
-        let child = hidden::Child::spawn_with(&cmd_exe(), &args, &[("SIDESCREEN_PROBE", "yes")]).unwrap();
+        let args: Vec<String> = ["/c", "if", "%EXPAND_PROBE%==yes", "(exit", "7)", "else", "(exit", "1)"].iter().map(|a| a.to_string()).collect();
+        let child = hidden::Child::spawn_with(&cmd_exe(), &args, &[("EXPAND_PROBE", "yes")]).unwrap();
         assert_eq!(child.wait().await.unwrap(), 7);
     }
 

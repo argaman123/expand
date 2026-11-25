@@ -22,7 +22,7 @@
 //! opens here, under its button, over the display. The bar doesn't show meanwhile.
 
 use crate::display::Front;
-use sidescreen_core::share::geometry::Area;
+use expand_core::share::geometry::Area;
 use tauri::AppHandle;
 
 pub const LABEL: &str = "bar";
@@ -227,8 +227,8 @@ pub use imp::*;
 mod imp {
     use super::{comes_up, in_front, popup_rect, region, reveal, shows, window_rect, Shape, Up, LABEL, MIN_BAR};
     use crate::display;
-    use sidescreen_core::share::geometry::Area;
-    use sidescreen_core::winwindow;
+    use expand_core::share::geometry::Area;
+    use expand_core::winwindow;
     use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
     use std::sync::Mutex;
     use tauri::{AppHandle, Emitter};
@@ -281,7 +281,7 @@ mod imp {
     /// Makes the bar window, hidden. On the main thread (in setup).
     pub fn create(app: &AppHandle) -> tauri::Result<()> {
         let bar = tauri::WebviewWindowBuilder::new(app, LABEL, tauri::WebviewUrl::App("bar.html".into()))
-            .title("Sidescreen bar")
+            .title("Expand bar")
             .decorations(false)
             .transparent(true)
             .always_on_top(true)
@@ -326,7 +326,7 @@ mod imp {
         };
         winwindow::set_region(bar, wanted);
         BAR.lock().unwrap().region = Some(wanted);
-        sidescreen_core::trace::line(|| format!("bar region {wanted:?}"));
+        expand_core::trace::line(|| format!("bar region {wanted:?}"));
     }
 
     /// Shows the bar window over the full-screen display window, or hides it. Its place changes
@@ -355,7 +355,7 @@ mod imp {
             up_as(Up::Hidden);
             if winwindow::is_visible(bar) {
                 winwindow::hide(bar);
-                sidescreen_core::trace::line(|| "bar hidden".into());
+                expand_core::trace::line(|| "bar hidden".into());
             }
             reset(app, bar);
             return;
@@ -374,7 +374,7 @@ mod imp {
         apply_region(bar);
         if !winwindow::is_visible(bar) {
             winwindow::show_without_focus(bar);
-            sidescreen_core::trace::line(|| format!("bar shown at {rect:?}"));
+            expand_core::trace::line(|| format!("bar shown at {rect:?}"));
         }
         SHOWN.store(true, Ordering::Relaxed);
         let now = if popup.is_some() { Up::Popup } else { Up::Bar };

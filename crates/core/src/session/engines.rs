@@ -252,7 +252,7 @@ impl ViewerEngine for RealViewer {
         let embedding = self.host.is_some() && !embedding_disabled();
         #[cfg(not(windows))]
         let embedding = false;
-        let hidden = moonlight::stream_starts_hidden(embedding, std::env::var_os("SIDESCREEN_VIEWER_PLAIN").as_deref());
+        let hidden = moonlight::stream_starts_hidden(embedding, std::env::var_os("EXPAND_VIEWER_PLAIN").as_deref());
         #[cfg_attr(not(windows), allow(unused_mut))]
         let mut viewer = Viewer::spawn(&self.exe, host, s, hidden)?;
         #[cfg(windows)]
@@ -275,12 +275,12 @@ impl ViewerEngine for RealViewer {
                     let found = Arc::new(tokio::sync::Notify::new());
                     let (speaks, heard) = tokio::sync::mpsc::unbounded_channel();
                     let tell = Arc::clone(&found);
-                    let (hook_env, plain_env) = (std::env::var_os("SIDESCREEN_VIEWER_HOOK"), std::env::var_os("SIDESCREEN_VIEWER_PLAIN"));
+                    let (hook_env, plain_env) = (std::env::var_os("EXPAND_VIEWER_HOOK"), std::env::var_os("EXPAND_VIEWER_PLAIN"));
                     let machine = moonlight::machine_of(&self.exe);
                     let in_context = moonlight::viewer_hook_wanted(hook_env.as_deref(), plain_env.as_deref(), machine);
                     crate::trace::line(|| {
                         format!(
-                            "viewer {pid} in-context hook {}: SIDESCREEN_VIEWER_HOOK {hook_env:?}, SIDESCREEN_VIEWER_PLAIN {plain_env:?}, viewer {} is {machine:x?}, this app {:x?}",
+                            "viewer {pid} in-context hook {}: EXPAND_VIEWER_HOOK {hook_env:?}, EXPAND_VIEWER_PLAIN {plain_env:?}, viewer {} is {machine:x?}, this app {:x?}",
                             if in_context { "wanted" } else { "not wanted" },
                             self.exe.display(),
                             moonlight::own_machine(),
@@ -364,12 +364,12 @@ impl ViewerEngine for RealViewer {
     }
 }
 
-/// `SIDESCREEN_NO_EMBED=1` (dev only, read once) keeps the viewer in its own window, on the
+/// `EXPAND_NO_EMBED=1` (dev only, read once) keeps the viewer in its own window, on the
 /// chosen monitor, and never shows the display window: for trying the fallback.
 #[cfg(windows)]
 pub fn embedding_disabled() -> bool {
     static OFF: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *OFF.get_or_init(|| std::env::var_os("SIDESCREEN_NO_EMBED").is_some_and(|v| v == "1"))
+    *OFF.get_or_init(|| std::env::var_os("EXPAND_NO_EMBED").is_some_and(|v| v == "1"))
 }
 
 #[cfg(windows)]
@@ -383,7 +383,7 @@ const EMBED_POLL: std::time::Duration = std::time::Duration::from_millis(250);
 #[cfg(windows)]
 fn read_viewer_log(pid: u32, log: std::fs::File, said: Arc<Said>, streaming: Arc<std::sync::atomic::AtomicBool>) {
     use std::io::BufRead;
-    let _ = std::thread::Builder::new().name("sidescreen-viewer-log".into()).spawn(move || {
+    let _ = std::thread::Builder::new().name("expand-viewer-log".into()).spawn(move || {
         let mut log = std::io::BufReader::new(log);
         let mut line = Vec::new();
         loop {
@@ -487,7 +487,7 @@ async fn embed_viewer_window(
                     }
                 }
                 EmbedPlan::Fallback => {
-                    eprintln!("sidescreen: no viewer window to embed after {waited} ms; it keeps its own");
+                    eprintln!("expand: no viewer window to embed after {waited} ms; it keeps its own");
                     crate::trace::line(|| format!("viewer {pid} fallback: none to embed after {waited} ms"));
                     give_back();
                     host.fallback();
@@ -510,12 +510,12 @@ async fn embed_viewer_window(
             .await
             .unwrap_or_else(|e| Err(e.to_string()));
         if let Err(e) = attached {
-            eprintln!("sidescreen: could not embed the viewer window {what}: {e}; it keeps its own");
+            eprintln!("expand: could not embed the viewer window {what}: {e}; it keeps its own");
             give_back();
             host.fallback();
             return settle_viewer_window(pid, placement, stream_monitor, full_screen).await;
         }
-        eprintln!("sidescreen: embedded the viewer window {what}");
+        eprintln!("expand: embedded the viewer window {what}");
         crate::trace::line(|| format!("viewer {pid} embedded {what}"));
         winwindow::set_embedded_viewer(Some(window));
         streaming.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -558,7 +558,7 @@ async fn settle_viewer_window(pid: u32, placement: Placement, stream_monitor: Op
 }
 
 #[cfg(windows)]
-const VIEWER_TITLE: &str = "Sidescreen";
+const VIEWER_TITLE: &str = "Expand";
 
 #[cfg(target_os = "macos")]
 pub use mac::{cleanup_orphans, RealHostEngines};
@@ -597,8 +597,8 @@ mod mac {
             tokio::time::sleep(Duration::from_secs(1)).await;
             quiet("pkill", &["-9", "-f", &conf]).await;
         }
-        // By full path: process names are cut to 16 characters, which "sidescreen-display" is not.
-        quiet("pkill", &["-f", "/sidescreen-display "]).await;
+        // By full path: process names are cut to 16 characters, which "expand-display" is not.
+        quiet("pkill", &["-f", "/expand-display "]).await;
     }
 
     /// The virtual display and Sunshine on the Mac.
@@ -646,7 +646,7 @@ mod mac {
             // Beside the MacBook, on the PC's side. A display that stays put still works; only
             // dragging across suffers, so this never fails.
             if let Err(e) = macdisplay::place_virtual(display, toward_pc) {
-                eprintln!("sidescreen: {e}");
+                eprintln!("expand: {e}");
             }
 
             let conf = sunshine::conf_path(&self.data_dir);

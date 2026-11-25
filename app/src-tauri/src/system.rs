@@ -61,9 +61,9 @@ pub fn install_command(app: &str) -> Option<(&'static str, Vec<String>)> {
 
 fn is_missing() -> bool {
     if cfg!(target_os = "macos") {
-        sidescreen_core::sunshine::find_exe().is_none()
+        expand_core::sunshine::find_exe().is_none()
     } else {
-        sidescreen_core::moonlight::find_exe().is_none()
+        expand_core::moonlight::find_exe().is_none()
     }
 }
 
@@ -77,7 +77,66 @@ fn permissions() -> (Option<bool>, Option<bool>) {
     extern "C" {
         fn AXIsProcessTrusted() -> bool;
     }
-    unsafe { (Some(CGPreflightScreenCaptureAccess()), Some(AXIsProcessTrusted())) }
+    // The first answer is kept by macOS until the app restarts, so an allowed Screen Recording
+    // would only tick after a restart: other apps' window titles show it at once.
+    let screen = unsafe { CGPreflightScreenCaptureAccess() } || titles_show_recording(&on_screen_windows(), std::process::id() as i64);
+    (Some(screen), Some(unsafe { AXIsProcessTrusted() }))
+}
+
+/// The windows on screen now: their owner and whether their title can be read.
+#[cfg(target_os = "macos")]
+fn on_screen_windows() -> Vec<SeenWindow> {
+    use core_foundation::array::{CFArray, CFArrayRef};
+    use core_foundation::base::{CFType, TCFType};
+    use core_foundation::dictionary::CFDictionary;
+    use core_foundation::number::CFNumber;
+    use core_foundation::string::{CFString, CFStringRef};
+    #[link(name = "CoreGraphics", kind = "framework")]
+    extern "C" {
+        fn CGWindowListCopyWindowInfo(option: u32, relative_to: u32) -> CFArrayRef;
+        static kCGWindowOwnerPID: CFStringRef;
+        static kCGWindowOwnerName: CFStringRef;
+        static kCGWindowName: CFStringRef;
+    }
+    const ON_SCREEN_ONLY: u32 = 1;
+    const EXCLUDE_DESKTOP: u32 = 16;
+    unsafe {
+        let list = CGWindowListCopyWindowInfo(ON_SCREEN_ONLY | EXCLUDE_DESKTOP, 0);
+        if list.is_null() {
+            return Vec::new();
+        }
+        let list: CFArray<CFDictionary<CFString, CFType>> = CFArray::wrap_under_create_rule(list);
+        let (pid_key, owner_key, name_key) = (
+            CFString::wrap_under_get_rule(kCGWindowOwnerPID),
+            CFString::wrap_under_get_rule(kCGWindowOwnerName),
+            CFString::wrap_under_get_rule(kCGWindowName),
+        );
+        list.iter()
+            .map(|window| SeenWindow {
+                pid: window.find(&pid_key).and_then(|n| n.downcast::<CFNumber>()).and_then(|n| n.to_i64()).unwrap_or(-1),
+                owner: window.find(&owner_key).and_then(|n| n.downcast::<CFString>()).map(|n| n.to_string()).unwrap_or_default(),
+                named: window.find(&name_key).is_some(),
+            })
+            .collect()
+    }
+}
+
+/// A window on screen, as `CGWindowListCopyWindowInfo` describes it.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+struct SeenWindow {
+    pid: i64,
+    owner: String,
+    named: bool,
+}
+
+/// Whether this app (`me`) may record the screen, from the windows on it: another app's window
+/// title shows only then. The Dock's, the Window Server's and Expand's own (the menu-bar helper
+/// is a process of its own) show anyway, so they don't count.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn titles_show_recording(windows: &[SeenWindow], me: i64) -> bool {
+    windows.iter().any(|w| {
+        w.named && w.pid != me && !matches!(w.owner.as_str(), "Dock" | "Window Server" | "WindowServer") && !w.owner.to_lowercase().starts_with("expand")
+    })
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -159,5 +218,18 @@ mod tests {
     #[test]
     fn nothing_else_has_an_installer() {
         assert!(install_command("Something else").is_none());
+    }
+
+    /// Another app's window shows its title only to an app allowed to record the screen; the
+    /// Dock, the Window Server and Expand's own windows show theirs anyway, so they don't count.
+    #[test]
+    fn screen_recording_shows_in_other_apps_window_titles() {
+        let w = |pid: i64, owner: &str, named: bool| SeenWindow { pid, owner: owner.to_string(), named };
+        let me = 10;
+        assert!(titles_show_recording(&[w(10, "Expand", true), w(20, "Finder", true)], me));
+        assert!(!titles_show_recording(&[w(20, "Finder", false), w(30, "Safari", false)], me));
+        assert!(!titles_show_recording(&[w(10, "Expand", true), w(11, "expand-panel", true)], me), "Expand's own");
+        assert!(!titles_show_recording(&[w(40, "Dock", true), w(41, "Window Server", true)], me), "shown to everyone");
+        assert!(!titles_show_recording(&[], me));
     }
 }
